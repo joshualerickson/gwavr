@@ -9,7 +9,6 @@
 #' @return A list of UT, UM and basin boundary sf objects
 #' @export
 #'
-#' @examples
 get_NLDI <- function(point){
 
   clat <- point$geometry[[1]][[2]]
@@ -70,7 +69,6 @@ get_NLDI <- function(point){
 #' @return A list of sf objects: UT and catchments.
 #' @export
 #'
-#' @examples
 get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 
   clat <- point$geometry[[1]][[2]]
@@ -129,7 +127,6 @@ get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 #' "Hydrography"}
 #' @export
 #'
-#' @examples
 base_map <- function () {
   grp <- c("Esri.WorldImagery", "CartoDB.Positron",
            "OpenStreetMap", "CartoDB.DarkMatter", "OpenTopoMap",
