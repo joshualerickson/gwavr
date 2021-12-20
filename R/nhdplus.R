@@ -232,7 +232,7 @@ css <- "
           })
 
         out <- list(values$hydro_data())
-        names(out) <- input$location_map
+        names(out) <- paste0(input$location_map, '_',sample(1:1000000,size = 1, replace = T))
 
         values$hydro_data_list <- append(values$hydro_data_list, out)
 
