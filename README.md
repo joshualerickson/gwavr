@@ -7,7 +7,6 @@
 
 [![Lifecycle:
 experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
-[![R-CMD-check](https://github.com/joshualerickson/gwavr/workflows/R-CMD-check/badge.svg)](https://github.com/joshualerickson/gwavr/actions)
 <!-- badges: end -->
 
 The goal of gwavr (Gee-waver) is to Get Water Attributes Visually in R
