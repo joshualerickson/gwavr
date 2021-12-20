@@ -22,7 +22,7 @@
 #' @importFrom sf st_area st_transform st_geometry st_as_sf
 #' @importFrom scales comma
 #' @importFrom leaflet addPolygons addPolylines addCircles
-#' @importFrom shiny observeEvent reactive actionButton HTML req withProgress setProgress
+#' @importFrom shiny observeEvent reactive actionButton HTML req withProgress setProgress tags
 #' @importFrom magrittr "%>%"
 #'
 #'
