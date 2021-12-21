@@ -43,7 +43,24 @@
 #' }
 get_nldi_interactively <- function() {
 
-ui = miniUI::miniPage(miniUI::miniContentPanel(leaflet::leafletOutput('leaf_map', height = '97%'),
+  ## Some code hijacked from mapedit throughout; to get miniUI look, etc
+
+  ## @timelyportfolio code to remove drawn features; https://github.com/bhaskarvk/leaflet.extras/issues/96
+  scr <- tags$script(HTML(
+    "
+Shiny.addCustomMessageHandler(
+  'removeleaflet',
+  function(x){
+    console.log('deleting',x)
+    // get leaflet map
+    var map = HTMLWidgets.find('#' + x.elid).getMap();
+    // remove
+    map.removeLayer(map._layers[x.layerid])
+  })
+"
+  ))
+
+ui = miniUI::miniPage(scr, miniUI::miniContentPanel(leaflet::leafletOutput('leaf_map', height = '97%'),
                                                height=NULL, width=NULL),
                       miniUI::gadgetTitleBar(title = '',
                                              right = miniUI::miniTitleBarButton("done", "Done", primary = TRUE)
@@ -100,10 +117,13 @@ server = function(input, output, session){
                                      rectangleOptions = F,
                                      markerOptions = leaflet.extras::drawMarkerOptions(repeatMode = F),
                                      polygonOptions = F) %>%
+    leaflet::addControl(html = shiny::actionButton("deletebtn", "remove drawn"),
+                        position = 'bottomleft',
+                        className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
-      leaflet::addLayersControl(baseGroups = c("Esri.WorldImagery", "CartoDB.Positron",
-                                               "OpenStreetMap", "CartoDB.DarkMatter", "OpenTopoMap"),
+      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
 
 
@@ -205,6 +225,38 @@ server = function(input, output, session){
     values$nldi_data_list <- append(values$nldi_data_list, list(values$nldi_data()))
   })
 
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid="leaf_map", layerid=todelete)
+          )
+        }
+      )
+    }
+  )
 
 #used to stop the app via button and retain selections
 observeEvent(input$done, {

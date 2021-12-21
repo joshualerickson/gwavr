@@ -8,7 +8,8 @@
 #' shiny app.
 #' @return A list of sf objects that the user collected during shiny session.
 #' @export
-#'
+#' @note The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlines,
+#' NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
 #' @examples \dontrun{
 #'
 #'
@@ -28,8 +29,24 @@
 #'
 get_nhdplus_interactively <- function() {
 
+  ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 
-    ui = miniUI::miniPage(miniUI::miniContentPanel(leaflet::leafletOutput('leaf_map', height = '97%'),
+  ## @timelyportfolio code to remove drawn features;https://github.com/bhaskarvk/leaflet.extras/issues/96
+  scr <- tags$script(HTML(
+    "
+Shiny.addCustomMessageHandler(
+  'removeleaflet',
+  function(x){
+    console.log('deleting',x)
+    // get leaflet map
+    var map = HTMLWidgets.find('#' + x.elid).getMap();
+    // remove
+    map.removeLayer(map._layers[x.layerid])
+  })
+"
+  ))
+
+    ui = miniUI::miniPage(scr,miniUI::miniContentPanel(leaflet::leafletOutput('leaf_map', height = '97%'),
                                                    height=NULL, width=NULL),
                           miniUI::gadgetTitleBar(title = '',
       right = miniUI::miniTitleBarButton("done", "Done", primary = TRUE)
@@ -92,7 +109,11 @@ css <- "
                                          rectangleOptions = leaflet.extras::drawRectangleOptions(repeatMode = F,
                                                                                                  shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)),
                                          markerOptions = leaflet.extras::drawMarkerOptions(repeatMode = F),
-                                         polygonOptions = F) %>%
+                                         polygonOptions = leaflet.extras::drawRectangleOptions(repeatMode = F,
+                                                                                               shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw') %>%
+          leaflet::addControl(html = shiny::actionButton("deletebtn", "remove drawn"),
+                              position = 'bottomleft',
+                              className = 'fieldset {border:0;}') %>%
           leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
           leaflet::hideGroup(group = 'Hydrography') %>%
           leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
@@ -145,38 +166,87 @@ css <- "
             shiny::setProgress(1/2)
 
             if(input$location_map == "huc12"){
-              values$hydro_data <- reactive(nhdplusTools::get_huc12(data_sf) %>% sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") )
+
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_huc12(data_sf))},
+                                            error = function(e) {
+                                              'error'
+                                            })
+
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No HUC 12 Features Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                leaflet::addPolygons(data = values$hydro_data(), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                leaflet::addPolygons(data = values$hydro_data()%>%
+                                       sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                                 "<b>HUC Name: </b>",values$hydro_data()$name,
                                                                                 "<br>", "<b>HUC #: </b>", values$hydro_data()$huc12,
                                                                                 "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data()$areaacres,0)), " acres" ) )
             } else if (input$location_map == "huc8") {
 
-              values$hydro_data <- reactive(nhdplusTools::get_huc8(data_sf) %>% sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"))
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_huc8(data_sf))},
+                                            error = function(e) {
+                                              'error'
+                                            })
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No HUC 8 Features Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                leaflet::addPolygons(data = values$hydro_data(), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                leaflet::addPolygons(data = values$hydro_data()%>%
+                                       sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                                 "<b>HUC Name: </b>",values$hydro_data()$name,
                                                                                 "<br>", "<b>HUC #: </b>", values$hydro_data()$huc8,
                                                                                 "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data()$areaacres,0)), " acres" ) )
 
             } else if (input$location_map == "catchment") {
 
-              values$hydro_data <- reactive(nhdplusTools::get_nhdplus(data_sf, realization = 'catchment') %>% sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") )
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_nhdplus(data_sf, realization = 'catchment'))},
+                error = function(e){
+                  'error'
+                }
+                )
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No Catchments Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                addPolygons(data = values$hydro_data(), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                addPolygons(data = values$hydro_data() %>%
+                              sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") , popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                        "<b>Feature ID: </b>",values$hydro_data()$featureid,
                                                                        "<br>", "<b>Area: </b>",scales::comma(round(values$hydro_data()$areasqkm,0)*247.105), " acres" ) )
 
             } else if (input$location_map == "nhdplus") {
 
-              values$hydro_data <- reactive(nhdplusTools::get_nhdplus(data_sf) %>% st_as_sf() %>% st_transform(crs = 4326,proj4string = "+init=epsg:4326") )
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_nhdplus(data_sf))},
+                                            error = function(e){
+                                              'error'
+                                            })
+
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No Flowlines Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                addPolylines(data = values$hydro_data(), popup = paste0("<p style=line-height:20px;margin:0px;>",
+                addPolylines(data = values$hydro_data()%>%
+                               st_as_sf() %>%
+                               sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") , popup = paste0("<p style=line-height:20px;margin:0px;>",
                                                                         "<b>Name: </b>",values$hydro_data()$gnis_name,
                                                                         "<br>", "<b>Stream Order (strahler): </b>", values$hydro_data()$streamorde,
                                                                         "<br>", "<b>Arbolate Sum: </b>", paste0(values$hydro_data()$arbolatesu, " mi"),
@@ -194,7 +264,18 @@ css <- "
 
             } else if (input$location_map == "outlet") {
 
-              values$hydro_data <- reactive(nhdplusTools::get_nhdplus(data_sf, realization = 'outlet') )
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_nhdplus(data_sf, realization = 'outlet'))},
+            error = function(e){
+              'error'
+            })
+
+              if(nchar(values$hydro_data())>1){
+
+                shinyWidgets::show_alert('No Outlets Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
                 addCircles(data = values$hydro_data(), weight = 15, popup = paste0("<p style=line-height:30px;margin:0px;>",
@@ -206,20 +287,46 @@ css <- "
 
             } else if (input$location_map == "nwis") {
 
-              values$hydro_data <-  reactive(nhdplusTools::get_nwis(data_sf) %>% st_as_sf() %>% st_transform(crs = 4326,proj4string = "+init=epsg:4326"))
+              values$hydro_data <-  tryCatch({reactive(nhdplusTools::get_nwis(data_sf))},
+                                             error = function(e){
+                                               'error'
+                                             })
+
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No NWIS Sites Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                addCircles(data = values$hydro_data(),radius = 15, weight = 15,
+                addCircles(data = values$hydro_data() %>%
+                             st_as_sf() %>%
+                             st_transform(crs = 4326,proj4string = "+init=epsg:4326"),radius = 15, weight = 15,
                            color = "red", popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                          "<b>Name: </b>",values$hydro_data()$station_nm,
                                                          "<br>", "<b>Site #: </b>", values$hydro_data()$site_no))
 
             } else if (input$location_map == 'waterbody'){
 
-              values$hydro_data <- reactive(nhdplusTools::get_waterbodies(data_sf) %>% sf::st_as_sf() %>% sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"))
+              values$hydro_data <- tryCatch({reactive(nhdplusTools::get_waterbodies(data_sf))},
+                                            error = function(e){
+                                              'error'
+                                            })
+
+              if(class(values$hydro_data())[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No Waterbodies  Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data())[[1]] == 'sf')
 
               leaflet::leafletProxy("leaf_map", session) %>%
-                addPolygons(data = values$hydro_data(), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                addPolygons(data = values$hydro_data() %>%
+                              sf::st_as_sf() %>%
+                              sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                        "<b>Name: </b>",values$hydro_data()$gnis_name,
                                                                        "<br>", "<b>Area: </b>",paste(comma(round(values$hydro_data()$areasqkm*247.105,0)), " acres" ),
                                                                        "<br>", "<b>F-type: </b>",values$hydro_data()$ftype,
@@ -238,6 +345,39 @@ css <- "
 
 
       })
+
+      # keep track of newly drawn shapes
+      drawnshapes <- list()
+
+      # we are fortunate here since we get an event
+      #   draw_all_features
+      observeEvent(
+        input$leaf_map_draw_all_features,
+        {
+          drawnshapes <<- lapply(
+            input$leaf_map_draw_all_features$features,
+            function(ftr) {
+              ftr$properties$`_leaflet_id`
+            }
+          )
+        }
+      )
+
+      # observe our simple little button to remove
+      observeEvent(
+        input$deletebtn,
+        {
+          lapply(
+            drawnshapes,
+            function(todelete) {
+              session$sendCustomMessage(
+                "removeleaflet",
+                list(elid="leaf_map", layerid=todelete)
+              )
+            }
+          )
+        }
+      )
       #used to stop the app via button and retain selections
       observeEvent(input$done, {
 

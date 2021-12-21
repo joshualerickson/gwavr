@@ -13,6 +13,10 @@ A list of sf objects that the user collected during shiny session.
 This function allows the user go get NHDPlus realizations interactively with a
 shiny app.
 }
+\note{
+The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlines,
+NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
+}
 \examples{
 \dontrun{
 

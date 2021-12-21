@@ -15,8 +15,8 @@ United States and get back hydrological data, e.g. flowlines,
 catchments, basin boundaries, comids, etc. Most of the heavy lifting is
 done by the [{nhdplusTools}](https://github.com/USGS-R/nhdplusTools)
 (much thanks) as well as the
-({leaflet})\[<https://github.com/rstudio/leaflet>\] extensions and all
-this package does is wrapp them into a app. Enjoy!
+[{leaflet}](https://github.com/rstudio/leaflet) extensions and all this
+package does is wrapp them into a app. Enjoy!
 
 ## Installation
 
@@ -41,4 +41,16 @@ library(gwavr)
 ## basic example code
 
 nhdplus_data <- get_nhdplus_interactively()
+
+## or for NLDI
+
+nldi_data <- get_nldi_interactively()
 ```
+
+<center>
+
+## Video
+
+<img src='inst/www/huc12.gif' class = 'center'>
+
+</center>

@@ -128,8 +128,8 @@ get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 #' @export
 #'
 base_map <- function () {
-  grp <- c("Esri.WorldImagery", "CartoDB.Positron",
-           "OpenStreetMap", "CartoDB.DarkMatter", "OpenTopoMap",
+  grp <- c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+           "OpenStreetMap", "CartoDB.DarkMatter",
            "Hydrography")
   att <- paste0("<a href='https://www.usgs.gov/'>", "U.S. Geological Survey</a> | ",
                 "<a href='https://www.usgs.gov/laws/policies_notices.html'>",
