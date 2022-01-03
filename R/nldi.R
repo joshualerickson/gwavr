@@ -43,6 +43,9 @@
 #' }
 get_nldi_interactively <- function() {
 
+  #spherical geometry switched off
+  sf::sf_use_s2(FALSE)
+
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 
   ## @timelyportfolio code to remove drawn features; https://github.com/bhaskarvk/leaflet.extras/issues/96

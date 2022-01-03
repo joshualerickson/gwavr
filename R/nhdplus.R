@@ -29,6 +29,9 @@
 #'
 get_nhdplus_interactively <- function() {
 
+  #spherical geometry switched off
+  sf::sf_use_s2(FALSE)
+
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 
   ## @timelyportfolio code to remove drawn features;https://github.com/bhaskarvk/leaflet.extras/issues/96
@@ -224,6 +227,7 @@ css <- "
 
               leaflet::leafletProxy("leaf_map", session) %>%
                 addPolygons(data = values$hydro_data() %>%
+                              sf::st_make_valid() %>%
                               sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") , popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                        "<b>Feature ID: </b>",values$hydro_data()$featureid,
                                                                        "<br>", "<b>Area: </b>",scales::comma(round(values$hydro_data()$areasqkm,0)*247.105), " acres" ) )
@@ -245,6 +249,7 @@ css <- "
 
               leaflet::leafletProxy("leaf_map", session) %>%
                 addPolylines(data = values$hydro_data()%>%
+                               sf::st_make_valid() %>%
                                st_as_sf() %>%
                                sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") , popup = paste0("<p style=line-height:20px;margin:0px;>",
                                                                         "<b>Name: </b>",values$hydro_data()$gnis_name,
@@ -269,7 +274,7 @@ css <- "
               'error'
             })
 
-              if(nchar(values$hydro_data())>1){
+              if(class(values$hydro_data())[[1]] != 'sf'){
 
                 shinyWidgets::show_alert('No Outlets Found',
                                          'please try a new area',
@@ -325,6 +330,7 @@ css <- "
 
               leaflet::leafletProxy("leaf_map", session) %>%
                 addPolygons(data = values$hydro_data() %>%
+                              sf::st_make_valid() %>%
                               sf::st_as_sf() %>%
                               sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                        "<b>Name: </b>",values$hydro_data()$gnis_name,
@@ -339,7 +345,7 @@ css <- "
           })
 
         out <- list(values$hydro_data())
-        names(out) <- paste0(input$location_map, '_',sample(1:1000000,size = 1, replace = T))
+        names(out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
         values$hydro_data_list <- append(values$hydro_data_list, out)
 
