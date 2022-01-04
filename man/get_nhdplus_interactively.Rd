@@ -4,7 +4,28 @@
 \alias{get_nhdplus_interactively}
 \title{Get NHDPlus Interactively}
 \usage{
-get_nhdplus_interactively()
+get_nhdplus_interactively(
+  ns = "hydro-ui",
+  viewer = shiny::paneViewer(),
+  title = "NHDPlus",
+  ...
+)
+}
+\arguments{
+\item{ns}{\code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
+is unlikely to require a change.}
+
+\item{viewer}{\code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
+NOTE: when using \code{browserViewer(browser = getOption("browser"))} to
+open the app in the default browser, the browser window will automatically
+close when closing the app (by pressing "done" or "cancel") in most browsers.
+Firefox is an exception. See Details for instructions on how to enable this
+behaviour in Firefox.}
+
+\item{title}{\code{string} to customize the title of the UI window.  The default
+is "Edit Map".}
+
+\item{...}{other arguments to \code{leafletOutput()} in module.}
 }
 \value{
 A list of sf objects that the user collected during shiny session.
@@ -26,5 +47,4 @@ nhdplus_data <- get_nhdplus_interactively()
 
 
 }
-#' @importFrom shiny NS tagList
 }

@@ -22,6 +22,7 @@ Imports:
     magrittr,
     miniUI,
     nhdplusTools,
+    promises,
     purrr,
     scales,
     sf,
