@@ -23,7 +23,7 @@ Firefox is an exception. See Details for instructions on how to enable this
 behaviour in Firefox.}
 
 \item{title}{\code{string} to customize the title of the UI window.  The default
-is "Edit Map".}
+is "NHDPlus".}
 
 \item{...}{other arguments to \code{leafletOutput()} in module.}
 }

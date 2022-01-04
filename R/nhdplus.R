@@ -15,7 +15,7 @@
 #'          Firefox is an exception. See Details for instructions on how to enable this
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
-#'          is "Edit Map".
+#'          is "NHDPlus".
 #' @param ... other arguments to \code{leafletOutput()} in module.
 #' @return A list of sf objects that the user collected during shiny session.
 #' @export

@@ -26,6 +26,7 @@ nhdplusModUI <- function(id, ...){
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
 #' @return server function for Shiny module
+#' @export
 nhdplusMod <- function(input, output, session, values){
   ns <- session$ns
 
