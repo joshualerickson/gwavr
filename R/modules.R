@@ -92,10 +92,6 @@ nhdplusMod <- function(input, output, session, values){
 
     shiny::req(nchar(input$location_map)>1)
 
-    shiny::withProgress(
-
-      message = paste0('Downloading ', input$location_map) ,
-      detail = 'This may take a few seconds...', value = 0,{
 
         # this differentiates between rectangle and point draw in leaflet
 
@@ -122,15 +118,27 @@ nhdplusMod <- function(input, output, session, values){
 
 
 
-        shiny::setProgress(1/2)
 
         if(input$location_map == "huc12"){
-          promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_huc12(data_sf)},
-                                          error = function(e) {
-                                            'error'
-                                          })
-          })
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
+         promises::future_promise({
+          nhdplusTools::get_huc12(data_sf)
+
+
+          }) %...>% {
+
+          values$hydro_data <- .
+
+          values$out <- list(values$hydro_data)
+          names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+          values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No HUC 12 Features Found',
@@ -146,13 +154,26 @@ nhdplusMod <- function(input, output, session, values){
                                                                                                                 "<br>", "<b>HUC #: </b>", values$hydro_data$huc12,
                                                                                                                 "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
 
+          } %>%
+           finally(~p$close())
           } else if (input$location_map == "huc8") {
+
+            p <- shiny::Progress$new()
+            p$set(message = "Downloading data...",
+                  detail = "This may take a little bit...",
+                  value = 1/2)
           promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_huc8(data_sf)},
-                                          error = function(e) {
-                                            'error'
-                                          })
-          })
+           nhdplusTools::get_huc8(data_sf)
+
+          }) %...>% {
+
+            values$hydro_data <- .
+
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No HUC 8 Features Found',
@@ -167,16 +188,26 @@ nhdplusMod <- function(input, output, session, values){
                                                                                                                 "<b>HUC Name: </b>",values$hydro_data$name,
                                                                                                                 "<br>", "<b>HUC #: </b>", values$hydro_data$huc8,
                                                                                                                 "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+          } %>%
+            finally(~p$close())
 
         } else if (input$location_map == "catchment") {
-          promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_nhdplus(data_sf, realization = 'catchment')},
-                                          error = function(e){
-                                            'error'
-                                          }
 
-            )
-          })
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
+          promises::future_promise({
+           nhdplusTools::get_nhdplus(data_sf, realization = 'catchment')
+          }) %...>% {
+
+            values$hydro_data <- .
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No Catchments Found',
@@ -191,14 +222,25 @@ nhdplusMod <- function(input, output, session, values){
                           sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326") , popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                                                                         "<b>Feature ID: </b>",values$hydro_data$featureid,
                                                                                                         "<br>", "<b>Area: </b>",scales::comma(round(values$hydro_data$areasqkm,0)*247.105), " acres" ) )
+          } %>%
+            finally(~p$close())
 
         } else if (input$location_map == "nhdplus") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
           promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_nhdplus(data_sf)},
-                                          error = function(e){
-                                            'error'
-                                          })
-          })
+            nhdplusTools::get_nhdplus(data_sf)
+          }) %...>% {
+
+            values$hydro_data <- .
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No Flowlines Found',
@@ -227,13 +269,25 @@ nhdplusMod <- function(input, output, session, values){
                                                                                                          "<br>", "<b>F-type: </b>",values$hydro_data$ftype,
                                                                                                          "<br>", "<b>F-code: </b>",values$hydro_data$fcode))
 
+          } %>%
+            finally(~p$close())
+
         } else if (input$location_map == "outlet") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
           promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_nhdplus(data_sf, realization = 'outlet')},
-                                          error = function(e){
-                                            'error'
-                                          })
-          })
+          nhdplusTools::get_nhdplus(data_sf, realization = 'outlet')
+          }) %...>% {
+
+            values$hydro_data <- .
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No Outlets Found',
@@ -249,14 +303,25 @@ nhdplusMod <- function(input, output, session, values){
                                                                                "<br>", "<b>Mean Annual Time of Travel: </b>", paste0(round(values$hydro_data$totma,4), " days" ),
                                                                                "<br>", "<b>COMID #: </b>", values$hydro_data$comid,
                                                                                "<br>", "<b>F-type: </b>",values$hydro_data$ftype))
+          } %>%
+            finally(~p$close())
 
         } else if (input$location_map == "nwis") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
           promises::future_promise({
-            values$hydro_data <-  tryCatch({nhdplusTools::get_nwis(data_sf)},
-                                           error = function(e){
-                                             'error'
-                                           })
-          })
+          nhdplusTools::get_nwis(data_sf)
+          }) %...>% {
+
+            values$hydro_data <- .
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No NWIS Sites Found',
@@ -272,14 +337,26 @@ nhdplusMod <- function(input, output, session, values){
                        color = "red", popup = paste0("<p style=line-height:30px;margin:0px;>",
                                                      "<b>Name: </b>",values$hydro_data$station_nm,
                                                      "<br>", "<b>Site #: </b>", values$hydro_data$site_no))
+          } %>%
+            finally(~p$close())
 
         } else if (input$location_map == 'waterbody'){
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
           promises::future_promise({
-            values$hydro_data <- tryCatch({nhdplusTools::get_waterbodies(data_sf)},
-                                          error = function(e){
-                                            'error'
-                                          })
-          })
+          nhdplusTools::get_waterbodies(data_sf)
+          }) %...>% {
+
+            values$hydro_data <- .
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
           if(class(values$hydro_data)[[1]] != 'sf'){
 
             shinyWidgets::show_alert('No Waterbodies  Found',
@@ -301,14 +378,12 @@ nhdplusMod <- function(input, output, session, values){
                                                                                                        "<br>", "<b>Lake Volume: </b>",paste(comma(round(values$hydro_data$lakevolume*35.3147,2)), " cf"),
                                                                                                        "<br>", "<b>Max Depth: </b>", paste(round(values$hydro_data$maxdepth*3.28084, 2), " ft")))
 
+          } %>%
+            finally(~p$close())
         }
-      })
 
 
-      values$out <- list(values$hydro_data)
-      names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
-      values$hydro_data_list <- append(values$hydro_data_list, values$out)
 
 
  })
