@@ -72,12 +72,7 @@ nhdplusMod <- function(input, output, session, values){
                                      markerOptions = leaflet.extras::drawMarkerOptions(repeatMode = F),
                                      polygonOptions = leaflet.extras::drawRectangleOptions(repeatMode = F,
                                                                                            shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw') %>%
-      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
-                          position = 'bottomleft',
-                          className = 'fieldset {border:0;}') %>%
-      # leaflet::addControl(html = shiny::actionButton("dowload", "download"),
-      #                     position = 'bottomleft',
-      #                     className = 'fieldset {border:0;}') %>%
+
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
       leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
@@ -402,9 +397,12 @@ nhdplusMod <- function(input, output, session, values){
   # keep track of newly drawn shapes
   values$drawnshapes <- list()
 
+
+  js_ping <- shiny::reactiveTimer(5000)
+
   # observe our simple little button to remove
   observeEvent(
-    input$deletebtn,
+    js_ping(),
     {
       lapply(
         values$drawnshapes,
