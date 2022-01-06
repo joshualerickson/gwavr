@@ -26,6 +26,7 @@ nhdplusModUI <- function(id, ...){
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
 #' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
 #' @export
 nhdplusMod <- function(input, output, session, values){
   ns <- session$ns
@@ -86,7 +87,8 @@ nhdplusMod <- function(input, output, session, values){
 
 
 
-  #leaflet proxy to update map with stations
+  #below is a mess with redundant code but
+  # not sure how to deal with when using futures....
 
   observeEvent(input$leaf_map_draw_new_feature, {
 
@@ -127,6 +129,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
          promises::future_promise({
+           sf::sf_use_s2(FALSE)
           nhdplusTools::get_huc12(data_sf)
 
 
@@ -139,30 +142,33 @@ nhdplusMod <- function(input, output, session, values){
 
           values$hydro_data_list <- append(values$hydro_data_list, values$out)
 
-          if(class(values$hydro_data)[[1]] != 'sf'){
+             if(class(values$hydro_data)[[1]] != 'sf'){
 
-            shinyWidgets::show_alert('No HUC 12 Features Found',
-                                     'please try a new area',
-                                     type = 'warning')}
+               shinyWidgets::show_alert('No HUC 12 Features Found',
+                                        'please try a new area',
+                                        type = 'warning')}
 
-          req(class(values$hydro_data)[[1]] == 'sf')
+             req(class(values$hydro_data)[[1]] == 'sf')
 
-          leaflet::leafletProxy("leaf_map", session) %>%
-            leaflet::addPolygons(data = values$hydro_data %>%
-                                   sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
-                                                                                                                "<b>HUC Name: </b>",values$hydro_data$name,
-                                                                                                                "<br>", "<b>HUC #: </b>", values$hydro_data$huc12,
-                                                                                                                "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+             leaflet::leafletProxy("leaf_map", session) %>%
+               leaflet::addPolygons(data = values$hydro_data %>%
+                                      sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                                                                                                                   "<b>HUC Name: </b>",values$hydro_data$name,
+                                                                                                                   "<br>", "<b>HUC #: </b>", values$hydro_data$huc12,
+                                                                                                                   "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
 
           } %>%
            finally(~p$close())
+
           } else if (input$location_map == "huc8") {
 
             p <- shiny::Progress$new()
             p$set(message = "Downloading data...",
                   detail = "This may take a little bit...",
                   value = 1/2)
+
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
            nhdplusTools::get_huc8(data_sf)
 
           }) %...>% {
@@ -199,6 +205,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
            nhdplusTools::get_nhdplus(data_sf, realization = 'catchment')
           }) %...>% {
 
@@ -233,6 +240,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
             nhdplusTools::get_nhdplus(data_sf)
           }) %...>% {
 
@@ -280,6 +288,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
           nhdplusTools::get_nhdplus(data_sf, realization = 'outlet')
           }) %...>% {
 
@@ -314,6 +323,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
           nhdplusTools::get_nwis(data_sf)
           }) %...>% {
 
@@ -348,6 +358,7 @@ nhdplusMod <- function(input, output, session, values){
                 value = 1/2)
 
           promises::future_promise({
+            sf::sf_use_s2(FALSE)
           nhdplusTools::get_waterbodies(data_sf)
           }) %...>% {
 

@@ -22,7 +22,6 @@ Imports:
     magrittr,
     miniUI,
     nhdplusTools,
-    promises,
     purrr,
     scales,
     sf,
@@ -30,4 +29,6 @@ Imports:
     shinyWidgets,
     tidyr,
     units,
-    utils
+    utils,
+    promises,
+    rlang
