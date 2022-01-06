@@ -394,27 +394,27 @@ nhdplusMod <- function(input, output, session, values){
 
  })
 
-  # keep track of newly drawn shapes
-  values$drawnshapes <- list()
-
-
-  js_ping <- shiny::reactiveTimer(5000)
-
-  # observe our simple little button to remove
-  observeEvent(
-    js_ping(),
-    {
-      lapply(
-        values$drawnshapes,
-        function(todelete) {
-          session$sendCustomMessage(
-            "removeleaflet",
-            list(elid=paste0(session$ns('leaf_map')), layerid=todelete)
-          )
-        }
-      )
-    }
-  )
+  # # keep track of newly drawn shapes
+  # values$drawnshapes <- list()
+  #
+  #
+  # js_ping <- shiny::reactiveTimer(5000)
+  #
+  # # observe our simple little button to remove
+  # observeEvent(
+  #   js_ping(),
+  #   {
+  #     lapply(
+  #       values$drawnshapes,
+  #       function(todelete) {
+  #         session$sendCustomMessage(
+  #           "removeleaflet",
+  #           list(elid=paste0(session$ns('leaf_map')), layerid=todelete)
+  #         )
+  #       }
+  #     )
+  #   }
+  # )
   # we are fortunate here since we get an event
   #   draw_all_features
   observeEvent(
