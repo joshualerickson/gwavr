@@ -1,16 +1,14 @@
 Package: gwavr
-Title: Get Water Attributes Visually in R (gwavr)
-Version: 0.1
+Title: Get Water Attributes Visually in R 
+Version: 0.1.0
 Authors@R: 
     person(given = "Joshua",
-           family = "Erickkson",
+           family = "Erickson",
            role = c("aut", "cre"),
-           email = "joshualerickson@gmail.com",
-           comment = c(ORCID = "YOUR-ORCID-ID"))
+           email = "joshualerickson@gmail.com")
 Description: The goal of gwavr (Gee-waver) is to Get Water Attributes Visually in R (gwavr). This allows the user to point and click on areas within the United States and get back hydrological data, e.g. flowlines, catchments, basin boundaries, comids, etc.
 License: MIT + file LICENSE
 Encoding: UTF-8
-LazyData: true
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.1.1
 Imports: 
@@ -30,5 +28,7 @@ Imports:
     tidyr,
     units,
     utils,
-    promises,
-    rlang
+    promises
+Suggests: 
+    spelling
+Language: en-US
