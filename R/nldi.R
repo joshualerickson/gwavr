@@ -20,26 +20,10 @@
 #' @importFrom utils data
 #'
 #'
-#' @examples \dontrun{
+#' @examples
 #'
-#' nldi_data <- get_nldi_interactively() #select by point with 'All Local Catchments'
-#'
-#' #then select 'done'
-#'
-#' #load some extra libraries
-#' library(sf)
-#' library(ggplot)
-#'
-#' #now plot
-#' ggplot() + geom_sf(data = nldi_data[[1]][[2]])
-#'
-#' #or view different zonal stats
-#'
-#' nldi_data[[1]][[2]] %>%
-#' ggplot() + geom_sf(aes(fill = CAT_PPT7100_ANN))
-#'
-#'
-#'
+#' if(interactive()){
+#' nldi_data <- get_nldi_interactively()
 #' }
 get_nldi_interactively <- function() {
 

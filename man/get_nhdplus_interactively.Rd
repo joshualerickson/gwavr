@@ -39,12 +39,9 @@ The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlin
 NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
 }
 \examples{
-\dontrun{
 
-
+if(interactive()){
 nhdplus_data <- get_nhdplus_interactively()
-
-
-
 }
+
 }

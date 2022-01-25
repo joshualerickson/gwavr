@@ -21,14 +21,12 @@
 #' @export
 #' @note The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlines,
 #' NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
-#' @examples \dontrun{
+#' @examples
 #'
-#'
+#' if(interactive()){
 #' nhdplus_data <- get_nhdplus_interactively()
-#'
-#'
-#'
 #' }
+#'
 #' @importFrom shiny NS tagList
 #' @importFrom dplyr filter select mutate slice_max ungroup rename group_by
 #' @importFrom sf st_area st_transform st_geometry st_as_sf
