@@ -7,6 +7,8 @@ Authors@R:
            role = c("aut", "cre"),
            email = "joshualerickson@gmail.com")
 Description: Provides methods to Get Water Attributes Visually in R ('gwavr'). This allows the user to point and click on areas within the United States and get back hydrological data, e.g. flowlines, catchments, basin boundaries, comids, etc.
+URL: https://github.com/joshualerickson/gwavr/
+BugReports: https://github.com/joshualerickson/gwavr/issues/
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
