@@ -5,8 +5,11 @@
 
 <!-- badges: start -->
 
+[![R-CMD-check](https://github.com/joshualerickson/gwavr/workflows/R-CMD-check/badge.svg)](https://github.com/joshualerickson/gwavr/actions)
+[![CRAN
+status](https://www.r-pkg.org/badges/version/gwavr)](https://CRAN.R-project.org/package=gwavr)
 [![Lifecycle:
-experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
+stable](https://img.shields.io/badge/lifecycle-stable-brightgreen.svg)](https://lifecycle.r-lib.org/articles/stages.html#stable)
 <!-- badges: end -->
 
 The goal of gwavr (Gee-waver) is to Get Water Attributes Visually in R
@@ -20,7 +23,14 @@ package does is wrapp them into a app. Enjoy!
 
 ## Installation
 
-Development version from [GitHub](https://github.com/) with:
+You can install `gwavr` from CRAN:
+
+``` r
+install.packages('gwavr')
+```
+
+To install the development version of the `gwavr` package, you can
+install directly from [GitHub](https://github.com/):
 
 ``` r
 # install.packages("devtools")
