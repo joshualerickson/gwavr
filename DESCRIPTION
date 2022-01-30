@@ -12,7 +12,7 @@ BugReports: https://github.com/joshualerickson/gwavr/issues/
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
-RoxygenNote: 7.1.2
+RoxygenNote: 7.1.1
 Imports: 
     dplyr,
     httr,
@@ -32,7 +32,7 @@ Imports:
     utils,
     promises
 Suggests: 
-    spelling
+    spelling,
     knitr,
-    rmarkdowndev
+    rmarkdown
 Language: en-US
