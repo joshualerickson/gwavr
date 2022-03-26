@@ -158,3 +158,138 @@ base_map <- function () {
                                    overlayGroups = grp[6], options = opt)
 }
 
+
+#' Get Basin Boundary NLDI
+#' @description  This function uses the USGS water data API to link a point to a realized basin. This is
+#' not the same as delineating from the exact point, rather this API uses NLDI to find the closest
+#' basin downstream source point. There is a lot you can do with this API and I would recommend
+#' looking at {nhdplusTools} as that has a lot of functionality and better documentation.
+#' @param point A sf point object.
+#'
+#' @return An sf object with added \code{comid} and \code{basin}.
+#' @note \code{point} needs geometry column.
+#' @export
+#'
+
+get_Basin <- function(point){
+
+
+  if(!'POINT' %in% sf::st_geometry_type(point)){"Need a sf POINT geometry"}
+
+  #just added indexs to group by
+
+  point <- point %>% dplyr::mutate(rowid = dplyr::row_number())
+
+  final_basin <- point %>%
+    split(.$rowid) %>%
+    purrr::map(purrr::safely(~nldi_basin_function(.))) %>%
+    purrr::keep(~length(.) != 0) %>%
+    purrr::map(~.x[['result']]) %>%
+    dplyr::bind_rows() %>%
+    sf::st_as_sf() %>%
+    dplyr::left_join(sf::st_drop_geometry(point), by = 'rowid') %>%
+    dplyr::select(-rowid)
+
+}
+
+
+#' Calling NLDI API
+#'
+#' @param point sf data.frame
+#'
+#' @return a sf data.frame with wateshed basin
+nldi_basin_function <- function(point){
+
+  clat <- point$geometry[[1]][[2]]
+  clng <- point$geometry[[1]][[1]]
+  rowid <- point$rowid
+  ids <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
+                clng,"%20", clat, "%29")
+
+  error_ids <- httr::GET(url = ids,
+                         httr::write_disk(path = file.path(tempdir(),
+                                                           "nld_tmp.json"),overwrite = TRUE))
+
+  nld <- jsonlite::fromJSON(file.path(tempdir(),"nld_tmp.json"))
+
+
+  nldiURLs <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/basin")
+
+  nldi_data <- sf::read_sf(nldiURLs)
+
+  nldi_data <- nldi_data %>%
+    dplyr::mutate(comid = nld$features$properties$identifier,
+                  rowid = rowid)
+
+}
+
+#'
+#' @title whitebox helpers
+#' @param sf_point a sf data.frame point(s)
+#' @param z param for elevatr function get_elev_raster()
+#' @param snap_dist distance to snap to stream (in meters)
+#' @param type 'd8' or 'd_inf'
+#' @param smoothing logical
+#' @param depressions logical
+#' @param ... arguments to pass to whitebox tools functions
+#'
+#' @return a sf polygon
+get_whitebox_basin <- function(sf_point, z, snap_dist, type = 'd8',
+                               smoothing = TRUE,
+                               depressions = TRUE,
+                               ...){
+  basin_test <- get_Basin(sf_point)
+
+  ele <- elevatr::get_elev_raster(basin_test, z = z)
+
+  output <- tempfile(fileext = '.tif')
+  terra::writeRaster(ele, output)
+
+  if(isTRUE(smoothing)){
+  whitebox::wbt_feature_preserving_smoothing(
+    dem = output,
+    output = output,
+    ...
+  )
+  }
+
+  if(isTRUE(depressions)){
+  whitebox::wbt_breach_depressions(dem = output,
+                                   output = output,
+                                   ...)
+  }
+
+  output_pointer <- tempfile(fileext = '.tif')
+
+  switch(type,
+  'd8' = {whitebox::wbt_d8_pointer(output, output_pointer)
+
+    whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
+          },
+  'd_inf' = {whitebox::wbt_d_inf_pointer(output, output_pointer)
+
+    whitebox::wbt_d_inf_flow_accumulation(input = output, output = output, out_type = 'cells')
+          })
+
+  output_streams <- tempfile(fileext = '.tif')
+
+  whitebox::wbt_extract_streams(output, output_streams, threshold = 10000)
+
+  sf_pt <- tempfile(fileext = '.shp')
+  sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
+
+  output_pp <- tempfile(fileext = '.shp')
+  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist*0.001)
+
+  output_ws <- tempfile(fileext = '.tif')
+
+  whitebox::wbt_watershed(d8_pntr = output_pointer,pour_pts = output_pp,output =  output_ws)
+
+  output_ws_poly <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
+
+  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
+}
+
+
+

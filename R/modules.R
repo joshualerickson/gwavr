@@ -431,6 +431,114 @@ nhdplusMod <- function(input, output, session, values){
 
 }
 
+#' Shiny Module UI for basins
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+basinModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
 
 
+#' Shiny Module Server for nhdplus
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+basinMod <- function(input, output, session, values){
 
+  ns <- session$ns
+
+  values$basin_data_list <- list()
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  #starting leaflet map
+  output$leaf_map <- leaflet::renderLeaflet({
+
+    base_map() %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('snap_dist'), 'Snap Distance (m)',value = 10,min = 1, max = 15000,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                     rectangleOptions = F,
+                                     markerOptions = T,
+                                     polygonOptions = F, targetGroup = 'draw') %>%
+
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
+                                overlayGroups = c("Hydrography"))
+  })
+  observeEvent(input$leaf_map_draw_new_feature, {
+
+
+    click <- input$leaf_map_draw_new_feature
+    clat <- click$geometry$coordinates[[2]]
+    clng <- click$geometry$coordinates[[1]]
+
+    data_sf <- tidyr::tibble(Lat = clat, Lon = clng)
+
+    data_sf <- data_sf %>% sf::st_as_sf(coords = c('Lon', 'Lat')) %>%
+      sf::st_set_crs(4326) %>%
+      sf::st_transform(crs = 4326)
+
+
+    p <- shiny::Progress$new()
+    p$set(message = "Downloading data...",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+      sf::sf_use_s2(FALSE)
+      ws_poly <- get_whitebox_basin(data_sf, input$map_res, input$snap_dist)
+
+
+    }) %...>% {
+      values$basin <- .
+      values$out <- list(values$basin)
+      names(values$out) <- paste0('Basin_',sample(1:10000,size = 1, replace = T))
+
+      values$basin_data_list <- append(values$basin_data_list, values$out)
+
+      leaflet::leafletProxy('leaf_map', session) %>%
+        leaflet::addPolygons(data = values$basin)
+
+    } %>%
+      finally(~p$close())
+
+
+  })
+}
