@@ -32,7 +32,7 @@ A list of sf objects that the user collected during shiny session.
 }
 \description{
 This function allows the user delineate watershed basins interactively with a
-shiny app. It uses the {elevatR} package for DEM and {whitebox} package to delineate the watershed.
+shiny app. It uses the {elevatr} package for DEM and {whitebox} package to delineate the watershed.
 }
 \examples{
 

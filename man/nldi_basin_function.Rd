@@ -10,7 +10,7 @@ nldi_basin_function(point)
 \item{point}{sf data.frame}
 }
 \value{
-a sf data.frame with wateshed basin
+a sf data.frame with watershed basin
 }
 \description{
 Calling NLDI API

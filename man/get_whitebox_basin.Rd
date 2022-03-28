@@ -8,7 +8,6 @@ get_whitebox_basin(
   sf_point,
   z,
   snap_dist,
-  type = "d8",
   smoothing = TRUE,
   depressions = TRUE,
   ...
@@ -20,8 +19,6 @@ get_whitebox_basin(
 \item{z}{param for elevatr function get_elev_raster()}
 
 \item{snap_dist}{distance to snap to stream (in meters)}
-
-\item{type}{'d8' or 'd_inf'}
 
 \item{smoothing}{logical}
 

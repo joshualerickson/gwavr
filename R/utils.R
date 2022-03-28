@@ -7,7 +7,6 @@
 #' @param point A sf point.
 #'
 #' @return A list of UT, UM and basin boundary sf objects
-#' @export
 #'
 get_NLDI <- function(point){
 
@@ -67,7 +66,6 @@ get_NLDI <- function(point){
 #' the size of the upstream area.
 #'
 #' @return A list of sf objects: UT and catchments.
-#' @export
 #'
 get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 
@@ -168,8 +166,6 @@ base_map <- function () {
 #'
 #' @return An sf object with added \code{comid} and \code{basin}.
 #' @note \code{point} needs geometry column.
-#' @export
-#'
 
 get_Basin <- function(point){
 
@@ -197,7 +193,7 @@ get_Basin <- function(point){
 #'
 #' @param point sf data.frame
 #'
-#' @return a sf data.frame with wateshed basin
+#' @return a sf data.frame with watershed basin
 nldi_basin_function <- function(point){
 
   clat <- point$geometry[[1]][[2]]
@@ -228,13 +224,12 @@ nldi_basin_function <- function(point){
 #' @param sf_point a sf data.frame point(s)
 #' @param z param for elevatr function get_elev_raster()
 #' @param snap_dist distance to snap to stream (in meters)
-#' @param type 'd8' or 'd_inf'
 #' @param smoothing logical
 #' @param depressions logical
 #' @param ... arguments to pass to whitebox tools functions
 #'
 #' @return a sf polygon
-get_whitebox_basin <- function(sf_point, z, snap_dist, type = 'd8',
+get_whitebox_basin <- function(sf_point, z, snap_dist,
                                smoothing = TRUE,
                                depressions = TRUE,
                                ...){
@@ -261,15 +256,10 @@ get_whitebox_basin <- function(sf_point, z, snap_dist, type = 'd8',
 
   output_pointer <- tempfile(fileext = '.tif')
 
-  switch(type,
-  'd8' = {whitebox::wbt_d8_pointer(output, output_pointer)
+  whitebox::wbt_d8_pointer(output, output_pointer)
 
-    whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
-          },
-  'd_inf' = {whitebox::wbt_d_inf_pointer(output, output_pointer)
+  whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
 
-    whitebox::wbt_d_inf_flow_accumulation(input = output, output = output, out_type = 'cells')
-          })
 
   output_streams <- tempfile(fileext = '.tif')
 

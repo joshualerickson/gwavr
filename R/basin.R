@@ -5,7 +5,7 @@
 #' Get Watershed Basin Interactively
 #'
 #' @description This function allows the user delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatR} package for DEM and {whitebox} package to delineate the watershed.
+#' shiny app. It uses the {elevatr} package for DEM and {whitebox} package to delineate the watershed.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
