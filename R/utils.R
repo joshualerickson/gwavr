@@ -226,13 +226,16 @@ nldi_basin_function <- function(point){
 #' @param snap_dist distance to snap to stream (in meters)
 #' @param smoothing logical
 #' @param depressions logical
+#' @param threshold numeric; cell threshold for stream delineation
 #' @param ... arguments to pass to whitebox tools functions
 #'
 #' @return a sf polygon
 get_whitebox_basin <- function(sf_point, z, snap_dist,
                                smoothing = TRUE,
                                depressions = TRUE,
+                               threshold,
                                ...){
+
   basin_test <- get_Basin(sf_point)
 
   ele <- elevatr::get_elev_raster(basin_test, z = z)
@@ -263,7 +266,94 @@ get_whitebox_basin <- function(sf_point, z, snap_dist,
 
   output_streams <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_extract_streams(output, output_streams, threshold = 10000)
+  whitebox::wbt_extract_streams(output, output_streams, threshold = threshold)
+
+  sf_pt <- tempfile(fileext = '.shp')
+  sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
+
+  output_pp <- tempfile(fileext = '.shp')
+  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist*0.001)
+
+  output_ws <- tempfile(fileext = '.tif')
+
+  whitebox::wbt_watershed(d8_pntr = output_pointer,pour_pts = output_pp,output =  output_ws)
+
+  file.remove(output_pointer)
+  file.remove(output_pp)
+
+  output_ws_poly <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
+
+  file.remove(output_ws)
+
+  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
+
+  final_data <- list(ws_poly = ws_poly, output_streams = raster::raster(output_streams))
+
+}
+
+
+
+#'
+#' @title whitebox helpers for streams
+#' @param aoi a sf polygon
+#' @param z param for elevatr function get_elev_raster()
+#' @param smoothing logical
+#' @param depressions logical
+#' @param threshold numeric; cell threshold for stream delineation
+#' @param ... arguments to pass to whitebox tools functions
+#'
+#' @return a list of file paths to .tif files and a terra::rast object
+get_whitebox_streams <- function(aoi, z,
+                               smoothing = TRUE,
+                               depressions = TRUE,
+                               threshold,
+                               ...){
+
+  ele <- elevatr::get_elev_raster(aoi, z = z, clip = 'locations')
+
+  output <- tempfile(fileext = '.tif')
+  terra::writeRaster(ele, output)
+
+  if(isTRUE(smoothing)){
+    whitebox::wbt_feature_preserving_smoothing(
+      dem = output,
+      output = output,
+      ...
+    )
+  }
+
+  if(isTRUE(depressions)){
+    whitebox::wbt_breach_depressions(dem = output,
+                                     output = output,
+                                     ...)
+  }
+
+  output_pointer <- tempfile(fileext = '.tif')
+
+  whitebox::wbt_d8_pointer(output, output_pointer)
+
+  whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
+
+  output_streams <- tempfile(fileext = '.tif')
+
+  whitebox::wbt_extract_streams(output, output_streams, threshold = threshold)
+
+  final_data <- list(output_streams = terra::rast(output_streams), output_streams2 = output_streams, output_pointer = output_pointer)
+
+}
+
+
+
+#' @title whitbox helpers for watersheds
+#' @param sf_point
+#' @param output_streams
+#' @param output_pointer
+#' @param snap_dist
+#'
+#' @return A sf polygon of a watershed
+#'
+get_whitebox_ws <- function(sf_point, output_streams, output_pointer, snap_dist) {
 
   sf_pt <- tempfile(fileext = '.shp')
   sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
@@ -280,6 +370,5 @@ get_whitebox_basin <- function(sf_point, z, snap_dist,
 
   ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
 }
-
 
 

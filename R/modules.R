@@ -491,8 +491,12 @@ basinMod <- function(input, output, session, values){
         ns('snap_dist'), 'Snap Distance (m)',value = 10,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
       leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
-                                     rectangleOptions = F,
+                                     rectangleOptions = T,
                                      markerOptions = T,
                                      polygonOptions = F, targetGroup = 'draw') %>%
 
@@ -502,9 +506,18 @@ basinMod <- function(input, output, session, values){
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
   })
+
   observeEvent(input$leaf_map_draw_new_feature, {
 
+    if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+    feat <- input$leaf_map_draw_new_feature
+    coords <- unlist(feat$geometry$coordinates)
+    coords <- matrix(coords, ncol = 2, byrow = T)
 
+    data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
+      sf::st_as_sf()
+
+    } else {
     click <- input$leaf_map_draw_new_feature
     clat <- click$geometry$coordinates[[2]]
     clng <- click$geometry$coordinates[[1]]
@@ -514,7 +527,7 @@ basinMod <- function(input, output, session, values){
     data_sf <- data_sf %>% sf::st_as_sf(coords = c('Lon', 'Lat')) %>%
       sf::st_set_crs(4326) %>%
       sf::st_transform(crs = 4326)
-
+    }
 
     p <- shiny::Progress$new()
     p$set(message = "Downloading data...",
@@ -523,11 +536,34 @@ basinMod <- function(input, output, session, values){
 
     promises::future_promise({
       sf::sf_use_s2(FALSE)
-      ws_poly <- get_whitebox_basin(data_sf, input$map_res, input$snap_dist)
+
+      if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+
+      ws_poly <- get_whitebox_streams(data_sf, input$map_res, threshold = input$threshold)
+
+      } else {
+
+      ws_poly <- get_whitebox_ws(data_sf, values$output_streams, values$output_pointer, input$snap_dist)
+
+      }
 
 
     }) %...>% {
-      values$basin <- .
+
+      if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+
+      values$streams <- .[['output_streams']]
+      values$output_streams <- .[[2]]
+      values$output_pointer <- .[[3]]
+
+      leaflet::leafletProxy('leaf_map', session) %>%
+        leaflet::addRasterImage(x = values$streams, colors = 'black')
+
+      } else {
+
+      values$basin <- .[['ws_poly']]
       values$out <- list(values$basin)
       names(values$out) <- paste0('Basin_',sample(1:10000,size = 1, replace = T))
 
@@ -535,6 +571,9 @@ basinMod <- function(input, output, session, values){
 
       leaflet::leafletProxy('leaf_map', session) %>%
         leaflet::addPolygons(data = values$basin)
+
+      }
+
 
     } %>%
       finally(~p$close())
