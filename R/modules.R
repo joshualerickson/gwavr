@@ -489,7 +489,7 @@ basinMod <- function(input, output, session, values){
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
-        ns('snap_dist'), 'Snap Distance (m)',value = 10,min = 1, max = 15000,
+        ns('snap_dist'), 'Snap Distance (m)',value = 1,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
@@ -499,7 +499,7 @@ basinMod <- function(input, output, session, values){
       leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
                                      rectangleOptions = T,
                                      markerOptions = T,
-                                     polygonOptions = F, targetGroup = 'draw') %>%
+                                     polygonOptions = T, targetGroup = 'draw') %>%
       leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
                           position = 'bottomleft',
                           className = 'fieldset {border:0;}') %>%
@@ -510,9 +510,18 @@ basinMod <- function(input, output, session, values){
                                 overlayGroups = c("Hydrography"))
   })
 
+    # create a counter
+
+    vals <- shiny::reactiveValues(count = 0)
+
   observeEvent(input$leaf_map_draw_new_feature, {
 
     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+    # make sure counter is at zero
+
+    vals$count <- 0
+
     feat <- input$leaf_map_draw_new_feature
     coords <- unlist(feat$geometry$coordinates)
     coords <- matrix(coords, ncol = 2, byrow = T)
@@ -521,6 +530,7 @@ basinMod <- function(input, output, session, values){
       sf::st_as_sf()
 
     } else {
+
     click <- input$leaf_map_draw_new_feature
     clat <- click$geometry$coordinates[[2]]
     clng <- click$geometry$coordinates[[1]]
@@ -538,18 +548,23 @@ basinMod <- function(input, output, session, values){
           value = 1/2)
 
     promises::future_promise({
-      sf::sf_use_s2(FALSE)
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
+      req(data_sf)
 
-      ws_poly <- get_whitebox_streams(data_sf, input$map_res, threshold = input$threshold)
+      ws_dem <- get_whitebox_streams(data_sf,
+                                     input$map_res,
+                                     threshold = input$threshold)
 
       } else {
 
       req(values$output_streams)
 
-      ws_poly <- get_whitebox_ws(data_sf, values$output_streams, values$output_pointer, input$snap_dist)
+      ws_poly <- get_whitebox_ws(data_sf,
+                                 output_streams = values$output_streams,
+                                 output_pointer =  values$output_pointer,
+                                 snap_dist = input$snap_dist)
 
       }
 
@@ -558,12 +573,13 @@ basinMod <- function(input, output, session, values){
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
-      values$streams <- .[['output_streams']]
+      values$streams <- .[['output_streams_rast']]
       values$output_streams <- .[[2]]
       values$output_pointer <- .[[3]]
+      values$output_fa <- .[[6]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addRasterImage(x = values$streams, colors = 'blue')
+        leaflet::addRasterImage(x = values$streams, colors = 'blue', group = 'raster1')
 
       } else {
 
@@ -581,9 +597,45 @@ basinMod <- function(input, output, session, values){
 
     } %>%
       finally(~p$close())
-
   })
 
+  # now for the dynamic threshold
+
+    observeEvent(input$threshold, ignoreInit = TRUE, {
+
+      req(values$output_fa)
+
+      # collect counts
+
+      vals$count <- vals$count + 1
+
+      promises::future_promise({
+
+
+
+        # extract streams based on threshold
+        output_streams <- tempfile(fileext = '.tif')
+
+        whitebox::wbt_extract_streams(values$output_fa,
+                                      output_streams,
+                                      threshold = input$threshold)
+        streams_rast <- list(streams = terra::rast(output_streams),
+                             output_streams = output_streams)
+
+      }) %...>% {
+
+          values$streams <- .[[1]]
+          values$output_streams <- .[[2]]
+
+          leaflet::leafletProxy('leaf_map', session) %>%
+            leaflet::clearGroup(group = paste0('raster', vals$count)) %>%
+            leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count + 1))
+
+
+
+        }
+
+    })
 
   # keep track of newly drawn shapes
   drawnshapes <- list()
@@ -671,6 +723,11 @@ streamnetworkMod <- function(input, output, session, values){
     font-family: inherit;
     padding: 2.5px;}"
 
+
+  # create a counter
+
+  vals <- shiny::reactiveValues(count = 0)
+
   #starting leaflet map
   output$leaf_map <- leaflet::renderLeaflet({
 
@@ -686,7 +743,7 @@ streamnetworkMod <- function(input, output, session, values){
       leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
                                      rectangleOptions = T,
                                      markerOptions = F,
-                                     polygonOptions = F, targetGroup = 'draw') %>%
+                                     polygonOptions = T, targetGroup = 'draw') %>%
       leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
                           position = 'bottomleft',
                           className = 'fieldset {border:0;}') %>%
@@ -699,11 +756,15 @@ streamnetworkMod <- function(input, output, session, values){
 
   observeEvent(input$leaf_map_draw_new_feature, {
 
+    # make sure counter is at zero
+
+    vals$count <- 0
+
       feat <- input$leaf_map_draw_new_feature
       coords <- unlist(feat$geometry$coordinates)
       coords <- matrix(coords, ncol = 2, byrow = T)
 
-      data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
+      values$data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
         sf::st_as_sf()
 
     p <- shiny::Progress$new()
@@ -712,9 +773,8 @@ streamnetworkMod <- function(input, output, session, values){
           value = 1/2)
 
     promises::future_promise({
-      sf::sf_use_s2(FALSE)
 
-        ws_poly <- get_whitebox_streams(data_sf,
+        ws_poly <- get_whitebox_streams(values$data_sf,
                                         input$map_res,
                                         threshold = input$threshold)
 
@@ -723,16 +783,49 @@ streamnetworkMod <- function(input, output, session, values){
         values$streams <- .[[5]]
         values$output_ws <- .[[4]]
 
-        values$out <- list(values$output_ws, values$streams)
+        values$out <- list(watersheds = values$output_ws, streams = values$streams)
 
-        values$basin_data_list <- append(values$basin_data_list, values$out)
+        values$basin_data_list <- append(values$basin_data_list, list(values$out))
 
 
         leaflet::leafletProxy('leaf_map', session) %>%
           leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-                               color = 'black', weight = 3) %>%
-          leaflet::addPolylines(data = values$streams, color = 'blue')
+                               color = 'black', weight = 3, group = 'poly1') %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = 'raster1')
 
+
+    } %>%
+      finally(~p$close())
+
+  })
+
+  observeEvent(input$threshold, ignoreInit = TRUE, {
+
+    req(values$output_ws)
+
+    p <- shiny::Progress$new()
+    p$set(message = "Changing Threshold",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+
+
+    ws_poly <- get_whitebox_streams(values$data_sf,
+                                    input$map_res,
+                                    threshold = input$threshold)
+
+
+    }) %...>% {
+
+      values$streams <- .[[5]]
+      values$output_ws <- .[[4]]
+
+      leaflet::leafletProxy('leaf_map', session)  %>%
+        leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count))) %>%
+        leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                             color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+        leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
 
     } %>%
       finally(~p$close())

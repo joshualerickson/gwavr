@@ -1,11 +1,8 @@
-
-
-
-
 #' Get Stream Network Interactively
 #'
-#' @description This function allows the user delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatr} package for DEM and {whitebox} package to delineate the watershed.
+#' @description This function allows the user to get stream networks and watersheds interactively with a
+#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+#' and {whitebox} package to delineate the stream network and watersheds (see details).
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -17,12 +14,27 @@
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
 #' @param ... other arguments to \code{leafletOutput()} in module.
+#' @details This function uses the package \link{elevatr} to download the DEM
+#' Once the user has drawn the bounding box then you can use the marker as a pour point location.
+#'
+#' **Steps**
+#'
+#' 1. Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
+#' 2. Draw bounding box (rectangle).
+#' 3. Wait for layers to respond.
+#' 4. when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
+#'
+#' In addition, this function uses both `whitebox::wbt_feature_preserving_smoothing()` and `whitebox::wbt_breach_depressions()`
+#' prior to running the flow direction and flow accumulation (both d8) algorithms.
+#'
+#'
+#'
 #' @return A list of sf objects that the user collected during shiny session.
 #' @export
 #' @examples
 #'
 #' if(interactive()){
-#' nhdplus_data <- get_basin_interactively()
+#' nhdplus_data <- get_stream_network_interactively()
 #' }
 #'
 #' @importFrom shiny NS tagList

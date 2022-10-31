@@ -1,11 +1,8 @@
-
-
-
-
 #' Get Watershed Basin Interactively
 #'
 #' @description This function allows the user to delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatr} package for the DEM and {whitebox} package to delineate the watershed.
+#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+#' and {whitebox} package to delineate the basin (see details).
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -17,17 +14,24 @@
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
 #' @param ... other arguments to \code{leafletOutput()} in module.
-#' @return A list of sf objects that the user collected during shiny session.
+#' @return A list of sf objects that contain watershed polygons
+#'         the user collected during shiny session.
 #'
-#' @details This function will throw an error if you don't draw the bounding box (rectangle) first.
+#' @details
+#' **This function will throw an error if you don't draw the bounding box (rectangle) first.**
 #' Once the user has drawn the bounding box then you can use the marker as a pour point location.
 #'
 #' **Steps**
 #'
-#' 1. Draw bounding box (rectangle).
-#' 2. Use marker to place pour point(s).
-#' 3. Hit 'done' and basins will be saved as a list in local environment.
+#' 1. Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
+#' 2. Draw bounding box (rectangle).
+#' 3. Use marker to place pour point(s).
+#' 4. If necessary, change 'Cell Threshold' to change drainage density.
+#' 5. Repeat steps 1-4 if needed.
+#' 6. When finished, press 'done' and basins will be saved as a list in local environment.
 #'
+#' In addition, this function uses both `whitebox::wbt_feature_preserving_smoothing()` and `whitebox::wbt_breach_depressions()`
+#' prior to running the flow direction and flow accumulation (both d8) algorithms.
 #' @export
 #' @examples
 #'
@@ -50,7 +54,7 @@ get_basin_interactively <- function(ns = 'basin-ui',
                                       ...) {
 
   #spherical geometry switched off
-  sf::sf_use_s2(FALSE)
+  #sf::sf_use_s2(FALSE)
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 

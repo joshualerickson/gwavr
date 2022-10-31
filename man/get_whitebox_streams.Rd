@@ -4,27 +4,16 @@
 \alias{get_whitebox_streams}
 \title{whitebox helpers for streams}
 \usage{
-get_whitebox_streams(
-  aoi,
-  z,
-  smoothing = TRUE,
-  depressions = TRUE,
-  threshold,
-  ...
-)
+get_whitebox_streams(aoi, z, threshold, prj)
 }
 \arguments{
 \item{aoi}{a sf polygon}
 
 \item{z}{param for elevatr function get_elev_raster()}
 
-\item{smoothing}{logical}
-
-\item{depressions}{logical}
-
 \item{threshold}{numeric; cell threshold for stream delineation}
 
-\item{...}{arguments to pass to whitebox tools functions}
+\item{prj}{A character vector with proj4string.}
 }
 \value{
 a list of file paths to .tif files and a terra::rast object

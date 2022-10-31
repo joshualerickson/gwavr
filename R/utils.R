@@ -220,129 +220,54 @@ nldi_basin_function <- function(point){
 }
 
 #'
-#' @title whitebox helpers
-#' @param sf_point a sf data.frame point(s)
-#' @param z param for elevatr function get_elev_raster()
-#' @param snap_dist distance to snap to stream (in meters)
-#' @param smoothing logical
-#' @param depressions logical
-#' @param threshold numeric; cell threshold for stream delineation
-#' @param ... arguments to pass to whitebox tools functions
-#'
-#' @return a sf polygon
-get_whitebox_basin <- function(sf_point, z, snap_dist,
-                               smoothing = TRUE,
-                               depressions = TRUE,
-                               threshold,
-                               ...){
-
-  basin_test <- get_Basin(sf_point)
-
-  ele <- elevatr::get_elev_raster(basin_test, z = z)
-
-  output <- tempfile(fileext = '.tif')
-  terra::writeRaster(ele, output)
-
-  if(isTRUE(smoothing)){
-  whitebox::wbt_feature_preserving_smoothing(
-    dem = output,
-    output = output,
-    ...
-  )
-  }
-
-  if(isTRUE(depressions)){
-  whitebox::wbt_breach_depressions(dem = output,
-                                   output = output,
-                                   ...)
-  }
-
-  output_pointer <- tempfile(fileext = '.tif')
-
-  whitebox::wbt_d8_pointer(output, output_pointer)
-
-  whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
-
-
-  output_streams <- tempfile(fileext = '.tif')
-
-  whitebox::wbt_extract_streams(output, output_streams, threshold = threshold)
-
-  sf_pt <- tempfile(fileext = '.shp')
-  sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
-
-  output_pp <- tempfile(fileext = '.shp')
-  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist*0.001)
-
-  output_ws <- tempfile(fileext = '.tif')
-
-  whitebox::wbt_watershed(d8_pntr = output_pointer,pour_pts = output_pp,output =  output_ws)
-
-  file.remove(output_pointer)
-  file.remove(output_pp)
-
-  output_ws_poly <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
-
-  file.remove(output_ws)
-
-  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
-
-  final_data <- list(ws_poly = ws_poly, output_streams = terra::rast(output_streams))
-
-}
-
-
-
-#'
 #' @title whitebox helpers for streams
 #' @param aoi a sf polygon
 #' @param z param for elevatr function get_elev_raster()
-#' @param smoothing logical
-#' @param depressions logical
 #' @param threshold numeric; cell threshold for stream delineation
-#' @param ... arguments to pass to whitebox tools functions
+#' @param prj A character vector with proj4string.
 #'
 #' @return a list of file paths to .tif files and a terra::rast object
-get_whitebox_streams <- function(aoi, z,
-                               smoothing = TRUE,
-                               depressions = TRUE,
-                               threshold,
-                               ...){
+get_whitebox_streams <- function(aoi,
+                                 z,
+                                 threshold,
+                                 prj){
+
+
+  if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
+
+  aoi <- aoi %>% sf::st_transform(prj)
 
   # download elevation
-  ele <- elevatr::get_elev_raster(aoi, z = z, clip = 'locations')
+  ele <- elevatr::get_elev_raster(aoi,
+                                  z = z,
+                                  prj = prj,
+                                  clip = 'locations')
 
   # write to temp file
   output <- tempfile(fileext = '.tif')
-  terra::writeRaster(ele, output)
+  terra::writeRaster(ele, output, overwrite = T)
 
   # perform smoothing and fill depressions
-  if(isTRUE(smoothing)){
     whitebox::wbt_feature_preserving_smoothing(
       dem = output,
-      output = output,
-      ...
+      output = output
     )
-  }
 
-  if(isTRUE(depressions)){
     whitebox::wbt_breach_depressions(dem = output,
-                                     output = output,
-                                     ...)
-  }
+                                     output = output)
 
   # get pointer (flow direction) and accumulation
   output_pointer <- tempfile(fileext = '.tif')
 
   whitebox::wbt_d8_pointer(output, output_pointer)
 
-  whitebox::wbt_d8_flow_accumulation(input = output, output = output, out_type = 'cells')
+  output_fa <- tempfile(fileext = '.tif')
+  whitebox::wbt_d8_flow_accumulation(input = output, output = output_fa, out_type = 'cells')
 
   # extract streams based on threshold
   output_streams <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_extract_streams(output, output_streams, threshold = threshold)
+  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold)
 
   # get stream link identifier
   pour_pts <- tempfile(fileext = '.tif')
@@ -393,58 +318,62 @@ get_whitebox_streams <- function(aoi, z,
   output_ws_poly <- tempfile(fileext = '.shp')
   whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
 
-  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
+  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
 
 
   # generate a stream vector
   output_stream_vector <- tempfile(fileext = '.shp')
 
   whitebox::wbt_raster_streams_to_vector(output_streams, output_pointer, output_stream_vector)
-  stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_set_crs(4326)
+  stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
 
-  # now get other stream vectors
-  # dist2outlet
-  output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_dist2out, output_pointer, output_stream_vector)
-  stream_vector_dist2out <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
-
-  # trib id
-  output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector)
-  stream_vector_tribid <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
-
-  # upstream channel length
-  output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_upstr_channel_length, output_pointer, output_stream_vector)
-  stream_vector_ucl <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
-
-  s <- sf::st_join(stream_vector %>% dplyr::select(geometry), stream_vector2, join = sf::st_equals)$FID
+#   # now get other stream vectors
+#   # dist2outlet
+#   output_stream_vector <- tempfile(fileext = '.shp')
+#   whitebox::wbt_raster_streams_to_vector(output_dist2out, output_pointer, output_stream_vector)
+#   stream_vector_dist2out <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
+#
+#   # trib id
+#   output_stream_vector <- tempfile(fileext = '.shp')
+#   whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector)
+#   stream_vector_tribid <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
+#
+#   # upstream channel length
+#   output_stream_vector <- tempfile(fileext = '.shp')
+#   whitebox::wbt_raster_streams_to_vector(output_upstr_channel_length, output_pointer, output_stream_vector)
+#   stream_vector_ucl <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
 
   final_data <- list(output_streams_rast = terra::rast(output_streams),
                      output_streams_path = output_streams,
                      output_pointer_path = output_pointer,
                      output_ws_poly = ws_poly,
-                     output_stream_vector = stream_vector)
+                     output_stream_vector = stream_vector,
+                     output_fa = output_fa)
 
 }
 
 
 
 #' @title whitbox helpers for watersheds
-#' @param sf_point
-#' @param output_streams
-#' @param output_pointer
-#' @param snap_dist
+#' @param sf_point A point marker from leaflet map
+#' @param prj A character vector with proj4string.
+#' @param output_streams A stream raster generated with the initial bbox.
+#' @param output_pointer A flow direction raster generated with the initial bbox.
+#' @param snap_dist numeric; distance to snap marker to output_streams raster.
 #'
 #' @return A sf polygon of a watershed
 #'
-get_whitebox_ws <- function(sf_point, output_streams, output_pointer, snap_dist) {
+get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer, snap_dist) {
+
+  if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
+
+  sf_point <- sf_point %>% sf::st_transform(prj)
 
   sf_pt <- tempfile(fileext = '.shp')
   sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
 
   output_pp <- tempfile(fileext = '.shp')
-  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist*0.001)
+  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist)
 
   output_ws <- tempfile(fileext = '.tif')
 
@@ -453,7 +382,7 @@ get_whitebox_ws <- function(sf_point, output_streams, output_pointer, snap_dist)
   output_ws_poly <- tempfile(fileext = '.shp')
   whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
 
-  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly))
+  ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
 
 }
 

@@ -4,10 +4,18 @@
 \alias{get_whitebox_ws}
 \title{whitbox helpers for watersheds}
 \usage{
-get_whitebox_ws(sf_point, output_streams, output_pointer, snap_dist)
+get_whitebox_ws(sf_point, prj, output_streams, output_pointer, snap_dist)
 }
 \arguments{
-\item{snap_dist}{}
+\item{sf_point}{A point marker from leaflet map}
+
+\item{prj}{A character vector with proj4string.}
+
+\item{output_streams}{A stream raster generated with the initial bbox.}
+
+\item{output_pointer}{A flow direction raster generated with the initial bbox.}
+
+\item{snap_dist}{numeric; distance to snap marker to output_streams raster.}
 }
 \value{
 A sf polygon of a watershed

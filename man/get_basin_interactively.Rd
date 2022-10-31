@@ -28,22 +28,30 @@ is "Delineate Basin".}
 \item{...}{other arguments to \code{leafletOutput()} in module.}
 }
 \value{
-A list of sf objects that the user collected during shiny session.
+A list of sf objects that contain watershed polygons
+the user collected during shiny session.
 }
 \description{
 This function allows the user to delineate watershed basins interactively with a
-shiny app. It uses the {elevatr} package for the DEM and {whitebox} package to delineate the watershed.
+shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+and {whitebox} package to delineate the basin (see details).
 }
 \details{
-This function will throw an error if you don't draw the bounding box (rectangle) first.
+\strong{This function will throw an error if you don't draw the bounding box (rectangle) first.}
 Once the user has drawn the bounding box then you can use the marker as a pour point location.
 
 \strong{Steps}
 \enumerate{
+\item Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
 \item Draw bounding box (rectangle).
 \item Use marker to place pour point(s).
-\item Hit 'done' and basins will be saved as a list in local environment.
+\item If necessary, change 'Cell Threshold' to change drainage density.
+\item Repeat steps 1-4 if needed.
+\item When finished, press 'done' and basins will be saved as a list in local environment.
 }
+
+In addition, this function uses both \code{whitebox::wbt_feature_preserving_smoothing()} and \code{whitebox::wbt_breach_depressions()}
+prior to running the flow direction and flow accumulation (both d8) algorithms.
 }
 \examples{
 

@@ -31,13 +31,29 @@ is "Delineate Basin".}
 A list of sf objects that the user collected during shiny session.
 }
 \description{
-This function allows the user delineate watershed basins interactively with a
-shiny app. It uses the {elevatr} package for DEM and {whitebox} package to delineate the watershed.
+This function allows the user to get stream networks and watersheds interactively with a
+shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+and {whitebox} package to delineate the stream network and watersheds (see details).
+}
+\details{
+This function uses the package \link{elevatr} to download the DEM
+Once the user has drawn the bounding box then you can use the marker as a pour point location.
+
+\strong{Steps}
+\enumerate{
+\item Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
+\item Draw bounding box (rectangle).
+\item Wait for layers to respond.
+\item when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
+}
+
+In addition, this function uses both \code{whitebox::wbt_feature_preserving_smoothing()} and \code{whitebox::wbt_breach_depressions()}
+prior to running the flow direction and flow accumulation (both d8) algorithms.
 }
 \examples{
 
 if(interactive()){
-nhdplus_data <- get_basin_interactively()
+nhdplus_data <- get_stream_network_interactively()
 }
 
 }
