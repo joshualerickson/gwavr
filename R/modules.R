@@ -520,7 +520,7 @@ basinMod <- function(input, output, session, values){
 
     # make sure counter is at zero
 
-    vals$count <- 0
+    vals$count <- sample(0:10000, size = 1)
 
     feat <- input$leaf_map_draw_new_feature
     coords <- unlist(feat$geometry$coordinates)
@@ -579,7 +579,7 @@ basinMod <- function(input, output, session, values){
       values$output_fa <- .[[6]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addRasterImage(x = values$streams, colors = 'blue', group = 'raster1')
+        leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
 
       } else {
 
@@ -605,10 +605,6 @@ basinMod <- function(input, output, session, values){
 
       req(values$output_fa)
 
-      # collect counts
-
-      vals$count <- vals$count + 1
-
       promises::future_promise({
 
 
@@ -627,9 +623,13 @@ basinMod <- function(input, output, session, values){
           values$streams <- .[[1]]
           values$output_streams <- .[[2]]
 
-          leaflet::leafletProxy('leaf_map', session) %>%
-            leaflet::clearGroup(group = paste0('raster', vals$count)) %>%
-            leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count + 1))
+          leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+            leaflet::clearGroup(group = paste0('raster', vals$count))
+
+          vals$count <- sample(0:10000, size = 1)
+
+          leaf_prox %>%
+            leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
 
 
 
@@ -758,7 +758,7 @@ streamnetworkMod <- function(input, output, session, values){
 
     # make sure counter is at zero
 
-    vals$count <- 0
+    vals$count <- sample(0:10000, size = 1)
 
       feat <- input$leaf_map_draw_new_feature
       coords <- unlist(feat$geometry$coordinates)
@@ -790,8 +790,8 @@ streamnetworkMod <- function(input, output, session, values){
 
         leaflet::leafletProxy('leaf_map', session) %>%
           leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-                               color = 'black', weight = 3, group = 'poly1') %>%
-          leaflet::addPolylines(data = values$streams, color = 'blue', group = 'raster1')
+                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
 
 
     } %>%
@@ -821,11 +821,20 @@ streamnetworkMod <- function(input, output, session, values){
       values$streams <- .[[5]]
       values$output_ws <- .[[4]]
 
-      leaflet::leafletProxy('leaf_map', session)  %>%
-        leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count))) %>%
-        leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+      leaf_prox <- leaflet::leafletProxy('leaf_map', session)  %>%
+
+      leaflet::clearGroup(group = c(paste0('raster', vals$count))) %>%
+
+      leaflet::clearGroup(group = c(paste0('poly', vals$count)))
+
+      vals$count <- sample(0:10000, size = 1)
+
+      leaf_prox %>%
+
+      leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
                              color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
-        leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+
+      leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
 
     } %>%
       finally(~p$close())

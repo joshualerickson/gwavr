@@ -17,6 +17,9 @@
 #' @return A list of sf objects that contain watershed polygons
 #'         the user collected during shiny session.
 #'
+#' @note The marker will only work for the most current stream raster. You can have multiple areas but
+#' you need to make sure that you are on the most current raster or the app will crash.
+#'
 #' @details
 #' **This function will throw an error if you don't draw the bounding box (rectangle) first.**
 #' Once the user has drawn the bounding box then you can use the marker as a pour point location.
