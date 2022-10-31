@@ -2,10 +2,10 @@
 
 
 
-#' Get Watershed Basin Interactively
+#' Get Stream Network Interactively
 #'
-#' @description This function allows the user to delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatr} package for the DEM and {whitebox} package to delineate the watershed.
+#' @description This function allows the user delineate watershed basins interactively with a
+#' shiny app. It uses the {elevatr} package for DEM and {whitebox} package to delineate the watershed.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -18,16 +18,6 @@
 #'          is "Delineate Basin".
 #' @param ... other arguments to \code{leafletOutput()} in module.
 #' @return A list of sf objects that the user collected during shiny session.
-#'
-#' @details This function will throw an error if you don't draw the bounding box (rectangle) first.
-#' Once the user has drawn the bounding box then you can use the marker as a pour point location.
-#'
-#' **Steps**
-#'
-#' 1. Draw bounding box (rectangle).
-#' 2. Use marker to place pour point(s).
-#' 3. Hit 'done' and basins will be saved as a list in local environment.
-#'
 #' @export
 #' @examples
 #'
@@ -44,10 +34,10 @@
 #' @importFrom dplyr "%>%"
 #'
 #'
-get_basin_interactively <- function(ns = 'basin-ui',
-                                      viewer = shiny::paneViewer(),
-                                      title = 'Delineate Basin',
-                                      ...) {
+get_stream_network_interactively <- function(ns = 'basin-ui',
+                                    viewer = shiny::paneViewer(),
+                                    title = 'Delineate Basin',
+                                    ...) {
 
   #spherical geometry switched off
   sf::sf_use_s2(FALSE)
@@ -67,7 +57,7 @@ Shiny.addCustomMessageHandler(
   })
 "
   )),miniUI::miniContentPanel(
-    basinModUI(ns, height = '97%'),
+    streamnetworkModUI(ns, height = '97%'),
     height=NULL, width=NULL
   ),
   miniUI::gadgetTitleBar(
@@ -97,7 +87,7 @@ $(document).on('shiny:disconnected', function() {
     values <- reactiveValues()
 
     crud_mod <- reactive(shiny::callModule(
-      basinMod,
+      streamnetworkMod,
       ns,
       values = values
     ))

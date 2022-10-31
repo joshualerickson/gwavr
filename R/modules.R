@@ -71,8 +71,10 @@ nhdplusMod <- function(input, output, session, values){
                                                                                              shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)),
                                      markerOptions = leaflet.extras::drawMarkerOptions(repeatMode = F),
                                      polygonOptions = leaflet.extras::drawRectangleOptions(repeatMode = F,
-                                                                                           shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw') %>%
-
+                                                                                           shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw')%>%
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomleft',
+                          className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
       leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
@@ -394,33 +396,15 @@ nhdplusMod <- function(input, output, session, values){
 
  })
 
-  # # keep track of newly drawn shapes
-  # values$drawnshapes <- list()
-  #
-  #
-  # js_ping <- shiny::reactiveTimer(5000)
-  #
-  # # observe our simple little button to remove
-  # observeEvent(
-  #   js_ping(),
-  #   {
-  #     lapply(
-  #       values$drawnshapes,
-  #       function(todelete) {
-  #         session$sendCustomMessage(
-  #           "removeleaflet",
-  #           list(elid=paste0(session$ns('leaf_map')), layerid=todelete)
-  #         )
-  #       }
-  #     )
-  #   }
-  # )
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
   # we are fortunate here since we get an event
   #   draw_all_features
   observeEvent(
     input$leaf_map_draw_all_features,
     {
-      values$drawnshapes <- lapply(
+      drawnshapes <<- lapply(
         input$leaf_map_draw_all_features$features,
         function(ftr) {
           ftr$properties$`_leaflet_id`
@@ -429,9 +413,26 @@ nhdplusMod <- function(input, output, session, values){
     }
   )
 
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
 }
 
-#' Shiny Module UI for basins
+#' Shiny Module UI for basin generation
 #'
 #' @description A shiny Module to.
 #'
@@ -454,7 +455,7 @@ basinModUI <- function(id, ...){
 }
 
 
-#' Shiny Module Server for nhdplus
+#' Shiny Module Server for basin generation
 #' @param input Shiny server function input
 #' @param output Shiny server function output
 #' @param session Shiny server function session
@@ -499,7 +500,9 @@ basinMod <- function(input, output, session, values){
                                      rectangleOptions = T,
                                      markerOptions = T,
                                      polygonOptions = F, targetGroup = 'draw') %>%
-
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomleft',
+                          className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
       leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
@@ -544,6 +547,8 @@ basinMod <- function(input, output, session, values){
 
       } else {
 
+      req(values$output_streams)
+
       ws_poly <- get_whitebox_ws(data_sf, values$output_streams, values$output_pointer, input$snap_dist)
 
       }
@@ -553,17 +558,16 @@ basinMod <- function(input, output, session, values){
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
-
       values$streams <- .[['output_streams']]
       values$output_streams <- .[[2]]
       values$output_pointer <- .[[3]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addRasterImage(x = values$streams, colors = 'black')
+        leaflet::addRasterImage(x = values$streams, colors = 'blue')
 
       } else {
 
-      values$basin <- .[['ws_poly']]
+      values$basin <- .
       values$out <- list(values$basin)
       names(values$out) <- paste0('Basin_',sample(1:10000,size = 1, replace = T))
 
@@ -578,6 +582,198 @@ basinMod <- function(input, output, session, values){
     } %>%
       finally(~p$close())
 
+  })
+
+
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
+
+}
+
+
+#' Shiny Module UI for stream network generation
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+streamnetworkModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for stream networks
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+streamnetworkMod <- function(input, output, session, values){
+
+  ns <- session$ns
+
+  values$basin_data_list <- list()
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  #starting leaflet map
+  output$leaf_map <- leaflet::renderLeaflet({
+
+    base_map() %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                     rectangleOptions = T,
+                                     markerOptions = F,
+                                     polygonOptions = F, targetGroup = 'draw') %>%
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomleft',
+                          className = 'fieldset {border:0;}') %>%
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
+                                overlayGroups = c("Hydrography"))
+  })
+
+  observeEvent(input$leaf_map_draw_new_feature, {
+
+      feat <- input$leaf_map_draw_new_feature
+      coords <- unlist(feat$geometry$coordinates)
+      coords <- matrix(coords, ncol = 2, byrow = T)
+
+      data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
+        sf::st_as_sf()
+
+    p <- shiny::Progress$new()
+    p$set(message = "Downloading data...",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+      sf::sf_use_s2(FALSE)
+
+        ws_poly <- get_whitebox_streams(data_sf,
+                                        input$map_res,
+                                        threshold = input$threshold)
+
+    }) %...>% {
+
+        values$streams <- .[[5]]
+        values$output_ws <- .[[4]]
+
+        values$out <- list(values$output_ws, values$streams)
+
+        values$basin_data_list <- append(values$basin_data_list, values$out)
+
+
+        leaflet::leafletProxy('leaf_map', session) %>%
+          leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                               color = 'black', weight = 3) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue')
+
+
+    } %>%
+      finally(~p$close())
 
   })
+
+
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
+
 }
+
