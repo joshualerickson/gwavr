@@ -879,3 +879,191 @@ streamnetworkMod <- function(input, output, session, values){
 
 }
 
+
+#' Shiny Module UI for USGS instantaneous values
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+usgsModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for USGS instantaneous values
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+usgsMod <- function(input, output, session, values){
+
+  ns <- session$ns
+
+  cc <- current_conditions()
+
+  cc_sf <- sf::st_as_sf(cc, coords = c('Longitude', 'Latitude'))
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+
+  #starting leaflet map
+  output$leaf_map <- leaflet::renderLeaflet({
+
+    base_map() %>%
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
+                                overlayGroups = c("Hydrography"))
+  })
+
+  observeEvent(input$leaf_map_draw_new_feature, {
+
+    # make sure counter is at zero
+
+    vals$count <- sample(0:10000, size = 1)
+
+    feat <- input$leaf_map_draw_new_feature
+    coords <- unlist(feat$geometry$coordinates)
+    coords <- matrix(coords, ncol = 2, byrow = T)
+
+    values$data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
+      sf::st_as_sf()
+
+    p <- shiny::Progress$new()
+    p$set(message = "Downloading data...",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+
+      ws_poly <- get_whitebox_streams(values$data_sf,
+                                      input$map_res,
+                                      threshold = input$threshold)
+
+    }) %...>% {
+
+      values$streams <- .[[5]]
+      values$output_ws <- .[[4]]
+
+      values$out <- list(watersheds = values$output_ws, streams = values$streams)
+
+      values$basin_data_list <- append(values$basin_data_list, list(values$out))
+
+
+      leaflet::leafletProxy('leaf_map', session) %>%
+        leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                             color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+        leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+
+
+    } %>%
+      finally(~p$close())
+
+  })
+
+  observeEvent(input$threshold, ignoreInit = TRUE, {
+
+    req(values$output_ws)
+
+    p <- shiny::Progress$new()
+    p$set(message = "Changing Threshold",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+
+
+      ws_poly <- get_whitebox_streams(values$data_sf,
+                                      input$map_res,
+                                      threshold = input$threshold)
+
+
+    }) %...>% {
+
+      values$streams <- .[[5]]
+      values$output_ws <- .[[4]]
+
+      leaf_prox <- leaflet::leafletProxy('leaf_map', session)  %>%
+
+        leaflet::clearGroup(group = c(paste0('raster', vals$count))) %>%
+
+        leaflet::clearGroup(group = c(paste0('poly', vals$count)))
+
+      vals$count <- sample(0:10000, size = 1)
+
+      leaf_prox %>%
+
+        leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                             color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+
+        leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+
+    } %>%
+      finally(~p$close())
+
+  })
+
+
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
+
+}
+

@@ -53,6 +53,10 @@ Once the user has drawn the bounding box then you can use the marker as a pour p
 In addition, this function uses both \code{whitebox::wbt_feature_preserving_smoothing()} and \code{whitebox::wbt_breach_depressions()}
 prior to running the flow direction and flow accumulation (both d8) algorithms.
 }
+\note{
+The marker will only work for the most current stream raster. You can have multiple areas but
+you need to make sure that you are on the most current raster or the app will crash.
+}
 \examples{
 
 if(interactive()){
