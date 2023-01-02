@@ -1,5 +1,5 @@
 
-#' Get NLDI Interactively
+#' Get Hydro Network-Linked Data Index (NLDI) Interactively
 #' @description This function uses the NLDI API to allow the user to visually
 #' select a location (point) to get numerous hydrologic realizations.
 #' @return A list with sf objects.
@@ -92,9 +92,10 @@ server = function(input, output, session){
     base_map()  %>%
       leaflet::addControl(html = tags$div(tags$style(css),shinyWidgets::pickerInput(
         'location_map', 'Select a NLDI option',
-        choices = c("", c(`Total Basin` = 'tot',
+        choices = list(NLDI = c(`Total Basin` = 'tot',
                           `All Local Catchments` = 'catch',
-                          `Only Local Catchment` = 'local')),
+                          `Only Local Catchment` = 'local')
+                    ),
         options = shinyWidgets::pickerOptions(container = 'body'),
         width = '80%',
         choicesOpt = list(

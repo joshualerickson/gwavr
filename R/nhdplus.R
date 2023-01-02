@@ -19,8 +19,8 @@
 #' @param ... other arguments to \code{leafletOutput()} in module.
 #' @return A list of sf objects that the user collected during shiny session.
 #' @export
-#' @note The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlines,
-#' NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
+#' @note The picker list has several options right now: NHDPlus Catchments, NHDPlus Flowlines,
+#' NHDPlus Waterbodies, NHDPlus Outlet, HUC 2-12, NWIS Site.
 #' @examples
 #'
 #' if(interactive()){

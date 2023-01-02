@@ -19,7 +19,7 @@ catchments, basin boundaries, comids, etc. Most of the heavy lifting is
 done by the [{nhdplusTools}](https://github.com/USGS-R/nhdplusTools)
 (much thanks) as well as the
 [{leaflet}](https://github.com/rstudio/leaflet) extensions and all this
-package does is wrapp them into a app. Enjoy!
+package does is wrap them into a app. Enjoy!
 
 ## Installation
 
@@ -44,7 +44,8 @@ Contributions are welcome!
 ## Example
 
 This is a basic example which shows you how to solve a common problem:
-getting water data without knowing the exact lat, lon.
+getting water data without knowing the exact lat, lon via a shiny
+application.
 
 ``` r
 library(gwavr)

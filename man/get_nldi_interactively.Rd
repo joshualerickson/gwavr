@@ -2,7 +2,7 @@
 % Please edit documentation in R/nldi.R
 \name{get_nldi_interactively}
 \alias{get_nldi_interactively}
-\title{Get NLDI Interactively}
+\title{Get Hydro Network-Linked Data Index (NLDI) Interactively}
 \usage{
 get_nldi_interactively()
 }

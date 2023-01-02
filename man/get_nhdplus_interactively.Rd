@@ -35,8 +35,8 @@ This function allows the user go get NHDPlus realizations interactively with a
 shiny app.
 }
 \note{
-The picker list has seven options right now: NHDPlus Catchments, NHDPlus Flowlines,
-NHDPlus Waterbodies, NHDPlus Outlet, HUC 12, HUC 8, NWIS Site.
+The picker list has several options right now: NHDPlus Catchments, NHDPlus Flowlines,
+NHDPlus Waterbodies, NHDPlus Outlet, HUC 2-12, NWIS Site.
 }
 \examples{
 

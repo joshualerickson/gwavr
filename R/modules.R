@@ -53,15 +53,22 @@ nhdplusMod <- function(input, output, session, values){
     base_map()  %>%
       leaflet::addControl(html = tags$div(tags$style(css),shinyWidgets::pickerInput(
         ns('location_map'), 'Select data type',
-        choices = c("", c(
+        choices = list(
+           NHDPlus = c(
           `NHDPlus Catchments` = 'catchment',
           `NHDPlus Flowlines` = 'nhdplus',
           `NHDPlus Waterbodies` = 'waterbody',
-          `NDHPlus Outlet` = 'outlet',
+          `NDHPlus Outlet` = 'outlet'),
+          `Hydrologic Units` = c(
           `HUC 12` = 'huc12',
-          `HUC 8` = 'huc8',
+          `HUC 10` = 'huc10',
+          `HUC 8` = 'huc08',
+          `HUC 6` = 'huc06',
+          `HUC 4` = 'huc04',
+          `HUC 2` = 'huc02'),
           `NWIS Sites` = 'nwis'
-        )),options = shinyWidgets::pickerOptions(container = 'body'),
+        ),
+        options = shinyWidgets::pickerOptions(container = 'body'),
         width = '80%',
         choicesOpt = list(
           style = rep(("font-weight: bold;font-family: 'Montserrat', sans-serif;"),51)))),
@@ -125,7 +132,7 @@ nhdplusMod <- function(input, output, session, values){
 
          promises::future_promise({
            sf::sf_use_s2(FALSE)
-          nhdplusTools::get_huc12(data_sf)
+           nhdplusTools::get_huc(data_sf, type = 'huc12')
 
 
           }) %...>% {
@@ -155,7 +162,44 @@ nhdplusMod <- function(input, output, session, values){
           } %>%
            finally(~p$close())
 
-          } else if (input$location_map == "huc8") {
+          } else if (input$location_map == "huc10") {
+
+            p <- shiny::Progress$new()
+            p$set(message = "Downloading data...",
+                  detail = "This may take a little bit...",
+                  value = 1/2)
+
+            promises::future_promise({
+              sf::sf_use_s2(FALSE)
+              nhdplusTools::get_huc(data_sf, type = 'huc10')
+
+            }) %...>% {
+
+              values$hydro_data <- .
+
+              values$out <- list(values$hydro_data)
+              names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+              values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
+              if(class(values$hydro_data)[[1]] != 'sf'){
+
+                shinyWidgets::show_alert('No HUC 10 Features Found',
+                                         'please try a new area',
+                                         type = 'warning')}
+
+              req(class(values$hydro_data)[[1]] == 'sf')
+
+              leaflet::leafletProxy("leaf_map", session) %>%
+                leaflet::addPolygons(data = values$hydro_data%>%
+                                       sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                                                                                                                    "<b>HUC Name: </b>",values$hydro_data$name,
+                                                                                                                    "<br>", "<b>HUC #: </b>", values$hydro_data$huc10,
+                                                                                                                    "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+            } %>%
+              finally(~p$close())
+
+          } else if (input$location_map == "huc08") {
 
             p <- shiny::Progress$new()
             p$set(message = "Downloading data...",
@@ -164,7 +208,7 @@ nhdplusMod <- function(input, output, session, values){
 
           promises::future_promise({
             sf::sf_use_s2(FALSE)
-           nhdplusTools::get_huc8(data_sf)
+            nhdplusTools::get_huc(data_sf, type = 'huc08')
 
           }) %...>% {
 
@@ -189,6 +233,117 @@ nhdplusMod <- function(input, output, session, values){
                                                                                                                 "<b>HUC Name: </b>",values$hydro_data$name,
                                                                                                                 "<br>", "<b>HUC #: </b>", values$hydro_data$huc8,
                                                                                                                 "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+          } %>%
+            finally(~p$close())
+
+        } else if (input$location_map == "huc06") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
+          promises::future_promise({
+            sf::sf_use_s2(FALSE)
+            nhdplusTools::get_huc(data_sf, type = 'huc06')
+
+          }) %...>% {
+
+            values$hydro_data <- .
+
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
+            if(class(values$hydro_data)[[1]] != 'sf'){
+
+              shinyWidgets::show_alert('No HUC 6 Features Found',
+                                       'please try a new area',
+                                       type = 'warning')}
+
+            req(class(values$hydro_data)[[1]] == 'sf')
+
+            leaflet::leafletProxy("leaf_map", session) %>%
+              leaflet::addPolygons(data = values$hydro_data%>%
+                                     sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                                                                                                                  "<b>HUC Name: </b>",values$hydro_data$name,
+                                                                                                                  "<br>", "<b>HUC #: </b>", values$hydro_data$huc6,
+                                                                                                                  "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+          } %>%
+            finally(~p$close())
+
+        } else if (input$location_map == "huc04") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
+          promises::future_promise({
+            sf::sf_use_s2(FALSE)
+            nhdplusTools::get_huc(data_sf, type = 'huc04')
+
+          }) %...>% {
+
+            values$hydro_data <- .
+
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
+            if(class(values$hydro_data)[[1]] != 'sf'){
+
+              shinyWidgets::show_alert('No HUC 4 Features Found',
+                                       'please try a new area',
+                                       type = 'warning')}
+
+            req(class(values$hydro_data)[[1]] == 'sf')
+
+            leaflet::leafletProxy("leaf_map", session) %>%
+              leaflet::addPolygons(data = values$hydro_data%>%
+                                     sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                                                                                                                  "<b>HUC Name: </b>",values$hydro_data$name,
+                                                                                                                  "<br>", "<b>HUC #: </b>", values$hydro_data$huc4,
+                                                                                                                  "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
+          } %>%
+            finally(~p$close())
+
+        } else if (input$location_map == "huc02") {
+
+          p <- shiny::Progress$new()
+          p$set(message = "Downloading data...",
+                detail = "This may take a little bit...",
+                value = 1/2)
+
+          promises::future_promise({
+            sf::sf_use_s2(FALSE)
+            nhdplusTools::get_huc(data_sf, type = 'huc02')
+
+          }) %...>% {
+
+            values$hydro_data <- .
+
+            values$out <- list(values$hydro_data)
+            names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
+
+            values$hydro_data_list <- append(values$hydro_data_list, values$out)
+
+            if(class(values$hydro_data)[[1]] != 'sf'){
+
+              shinyWidgets::show_alert('No HUC 2 Features Found',
+                                       'please try a new area',
+                                       type = 'warning')}
+
+            req(class(values$hydro_data)[[1]] == 'sf')
+
+            leaflet::leafletProxy("leaf_map", session) %>%
+              leaflet::addPolygons(data = values$hydro_data%>%
+                                     sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
+                                                                                                                  "<b>HUC Name: </b>",values$hydro_data$name,
+                                                                                                                  "<br>", "<b>HUC #: </b>", values$hydro_data$huc2,
+                                                                                                                  "<br>", "<b>HUC Area: </b>",scales::comma(round(values$hydro_data$areaacres,0)), " acres" ) )
           } %>%
             finally(~p$close())
 
