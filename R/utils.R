@@ -442,7 +442,7 @@ current_conditions <- function(){
       StatisticsStatusColorFill = dplyr::case_when(
         StatisticsStatusDescription == "Not ranked" ~ '#FFFFFF',
         StatisticsStatusDescription == "Measurement flag" ~ '#989898',
-        StatisticsStatusDescription == "Not flowing" ~ '#FFFFFF',
+        StatisticsStatusDescription == "Not flowing" ~ '#fff',
         StatisticsStatusDescription == "All-time low for this day" ~ "#FF0000",
         StatisticsStatusDescription == "Much below normal" ~ "#BB2222",
         StatisticsStatusDescription == "Below normal" ~ "#FFAA00",
@@ -469,7 +469,7 @@ current_conditions <- function(){
       StatisticsStatusColorFill = factor(StatisticsStatusColorFill,
                                          levels = c('#FFFFFF',
                                                     '#989898',
-                                                    '#000000',
+                                                    '#F5F5F5',
                                                     "#FF0000",
                                                     "#BB2222",
                                                     "#FFAA00",
