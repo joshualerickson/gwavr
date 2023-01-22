@@ -2,7 +2,7 @@
 % Please edit documentation in R/modules.R
 \name{usgsinstMod}
 \alias{usgsinstMod}
-\title{Shiny Module Server for USGS instantaneous values}
+\title{Shiny Module Server for United States Geologic Survey (USGS) instantaneous values}
 \usage{
 usgsinstMod(input, output, session, values)
 }
@@ -19,5 +19,5 @@ usgsinstMod(input, output, session, values)
 server function for Shiny module
 }
 \description{
-Shiny Module Server for USGS instantaneous values
+Shiny Module Server for United States Geologic Survey (USGS) instantaneous values
 }

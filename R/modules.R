@@ -880,7 +880,7 @@ streamnetworkMod <- function(input, output, session, values){
 }
 
 
-#' Shiny Module UI for USGS instantaneous values
+#' Shiny Module UI for United States Geologic Survey (USGS) instantaneous values
 #'
 #' @description A shiny Module to.
 #'
@@ -903,7 +903,7 @@ usgsinstModUI <- function(id, ...){
 }
 
 
-#' Shiny Module Server for USGS instantaneous values
+#' Shiny Module Server for United States Geologic Survey (USGS) instantaneous values
 #' @param input Shiny server function input
 #' @param output Shiny server function output
 #' @param session Shiny server function session
@@ -915,45 +915,72 @@ usgsinstMod <- function(input, output, session, values){
 
   ns <- session$ns
 
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  p <- shiny::Progress$new()
+  p$set(message = "Setting up dashboard...",
+        detail = "This may take a few seconds...",
+        value = 1/2)
+
+  promises::future_promise({
   cc <- current_conditions()
 
-  cc_sf <- sf::st_as_sf(cc, coords = c('Longitude', 'Latitude')) %>%
-    dplyr::mutate(time = as.POSIXct(cc$TimeLocal,format="%Y-%m-%dT%H:%M:%OS"))
+  }) %...>% {
 
-  fillColor <- colorFactor(palette = levels(unique(cc_sf$StatisticsStatusColorFill)),
-                           domain = cc_sf$StatisticsStatusDescription
+  values$cc <- .
+
+  values$cc_sf <- sf::st_as_sf( values$cc, coords = c('Longitude', 'Latitude')) %>%
+    dplyr::mutate(time = as.POSIXct(values$cc$TimeLocal,format="%Y-%m-%dT%H:%M:%OS"))
+
+  values$fillColor <- leaflet::colorFactor(palette = levels(unique(values$cc_sf$StatisticsStatusColorFill)),
+                           domain = values$cc_sf$StatisticsStatusDescription
   )
-  strokeColor <- colorFactor(palette = levels(unique(cc_sf$StatisticsStatusColorStroke)),
-                             domain = cc_sf$StatisticsStatusDescription
+  values$strokeColor <- leaflet::colorFactor(palette = levels(unique(values$cc_sf$StatisticsStatusColorStroke)),
+                             domain = values$cc_sf$StatisticsStatusDescription
   )
+
+
 
   labs <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
 <div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
-leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',cc_sf$SiteName,'
-            <div style="font-size:90%;"> Monitoring location USGS ',cc_sf$SiteNumber,
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$cc_sf$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$cc_sf$SiteNumber,
                  '</div>
             <div style="border:1px solid #ddd; margin:3px 0; padding:3px 5px;">
                 Discharge, cubic feet per second
-                <div style="font-size:110%;">',cc_sf$Value,' ft3/s @ ',format(as.POSIXct(cc_sf$time), format = "%H:%M:%S"),' ', cc_sf$TimeZoneCode,'</div>
+                <div style="font-size:110%;">',values$cc_sf$Value,' ft3/s @ ',format(as.POSIXct(values$cc_sf$time), format = "%H:%M:%S"),' ', values$cc_sf$TimeZoneCode,'</div>
                 <div style="font-weight:bold;"></div>
             </div>
-            <div style="font-size:90%;">',ifelse(!is.na(cc_sf$ValueFlagCode),
-                                                 paste0(cc_sf$StatisticsStatusDescription,' :', cc_sf$ValueFlagCode),
-                                                 paste0(cc_sf$StatisticsStatusDescription)),'</div>
-            <div style="font-size:90%;">Rate of Change: ', cc_sf$RateOfChangeUnitPerHour,' ft3/s per hour</div>
+            <div style="font-size:90%;">',ifelse(!is.na(values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription,' :', values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription)),'</div>
+            <div style="font-size:90%;">Rate of Change: ', values$cc_sf$RateOfChangeUnitPerHour,' ft3/s per hour</div>
         </div></div></div>')
 
-  output$leaf_map <- leaflet::renderLeaflet({
+  leaf_map <-
   base_map() %>%
+    leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+      ns('period'), 'Days From Now',value = 30,min = 1, max = 15000,
+      width = '100%'))) %>%
     leaflet::addProviderTiles(provider = 'Esri.WorldStreetMap') %>%
-    leaflet::addCircleMarkers(data = cc_sf,
-                              fillColor = ~fillColor(StatisticsStatusDescription),
-                              color = ~strokeColor(StatisticsStatusDescription),
+    leaflet::addCircleMarkers(data = values$cc_sf,
+                              fillColor = ~values$fillColor(StatisticsStatusDescription),
+                              color = ~values$strokeColor(StatisticsStatusDescription),
                               radius = 5,
                               weight = 2,
                               fillOpacity = 1,
                               opacity = 1,
-                              label = lapply(labs, HTML)
+                              label = lapply(labs, HTML),
+                              layerId = ~values$cc_sf$SiteNumber
     ) %>%
     leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
     leaflet::hideGroup(group = 'Hydrography') %>%
@@ -961,6 +988,56 @@ leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size
                                              "OpenStreetMap", "CartoDB.DarkMatter", 'OpenTopoMap'),
                               overlayGroups = c("Hydrography"))
 
-    })
+
+
+  output$leaf_map <- leaflet::renderLeaflet({
+    add_select_script(
+      leaf_map,
+      styleFalse = list(fillOpacity = 1, weight = 3, opacity = 1),
+      styleTrue = list(fillOpacity = .25, weight = 1, opacity = .5),
+      ns = session$ns(NULL)
+    )
+  })
+
+  } %>%
+    finally(~p$close())
+
+
+id = "mapedit"
+select_evt = paste0(id, "_selected")
+
+values$df <- data.frame()
+values$period <- vector()
+
+# a container for our selections
+observeEvent(input[[select_evt]],{
+  # when used in modules, we get an event with blank id
+  #  on initialize so also make sure we have an id
+  id = as.character(input[[select_evt]]$id)
+  if(nrow(values$df) == 0 && !is.null(id)) {
+    values$df <- data.frame(
+      id = id,
+      selected = input[[select_evt]]$selected,
+      stringsAsFactors = FALSE
+    )
+  } else {
+    # see if already exists
+    loc <- which(values$df$id == id)
+
+    if(length(loc) > 0) {
+      values$df[loc, "selected"] <- input[[select_evt]]$selected
+    } else {
+      values$df[nrow(values$df) + 1, ] <- c(id, input[[select_evt]]$selected)
+    }
+  }
+
+})
+
+observeEvent(input$period,{
+
+  values$period <- input$period
+
+})
+
 }
 

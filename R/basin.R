@@ -42,14 +42,6 @@
 #' nhdplus_data <- get_basin_interactively()
 #' }
 #'
-#' @importFrom shiny NS tagList
-#' @importFrom dplyr filter select mutate slice_max ungroup rename group_by
-#' @importFrom sf st_area st_transform st_geometry st_as_sf
-#' @importFrom scales comma
-#' @importFrom leaflet addPolygons addPolylines addCircles
-#' @importFrom shiny observeEvent reactive actionButton HTML req withProgress setProgress tags
-#' @importFrom dplyr "%>%"
-#'
 #'
 get_basin_interactively <- function(ns = 'basin-ui',
                                       viewer = shiny::paneViewer(),

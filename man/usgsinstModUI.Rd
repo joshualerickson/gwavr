@@ -2,7 +2,7 @@
 % Please edit documentation in R/modules.R
 \name{usgsinstModUI}
 \alias{usgsinstModUI}
-\title{Shiny Module UI for USGS instantaneous values}
+\title{Shiny Module UI for United States Geologic Survey (USGS) instantaneous values}
 \usage{
 usgsinstModUI(id, ...)
 }

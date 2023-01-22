@@ -32,7 +32,8 @@ Imports:
     utils,
     elevatr,
     whitebox,
-    terra
+    terra,
+    htmlwidgets
 Suggests: 
     spelling,
     knitr,

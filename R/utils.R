@@ -5,7 +5,7 @@
 #' the NLDI API. It then combines the NLDI zonal stats to the basin boundary shape, i.e. 'TOT' is the 'total' basin zonal statistic.
 #'
 #' @param point A sf point.
-#'
+#' @noRd
 #' @return A list of UT, UM and basin boundary sf objects
 #'
 get_NLDI <- function(point){
@@ -64,7 +64,7 @@ get_NLDI <- function(point){
 #'
 #' @note This function can be expensive when using type = 'local' and method = 'all' depending on
 #' the size of the upstream area.
-#'
+#' @noRd
 #' @return A list of sf objects: UT and catchments.
 #'
 get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
@@ -163,7 +163,7 @@ base_map <- function () {
 #' basin downstream source point. There is a lot you can do with this API and I would recommend
 #' looking at {nhdplusTools} as that has a lot of functionality and better documentation.
 #' @param point A sf point object.
-#'
+#' @noRd
 #' @return An sf object with added \code{comid} and \code{basin}.
 #' @note \code{point} needs geometry column.
 
@@ -192,7 +192,7 @@ get_Basin <- function(point){
 #' Calling NLDI API
 #'
 #' @param point sf data.frame
-#'
+#' @noRd
 #' @return a sf data.frame with watershed basin
 nldi_basin_function <- function(point){
 
@@ -225,7 +225,7 @@ nldi_basin_function <- function(point){
 #' @param z param for elevatr function get_elev_raster()
 #' @param threshold numeric; cell threshold for stream delineation
 #' @param prj A character vector with proj4string.
-#'
+#' @noRd
 #' @return a list of file paths to .tif files and a terra::rast object
 get_whitebox_streams <- function(aoi,
                                  z,
@@ -360,7 +360,7 @@ get_whitebox_streams <- function(aoi,
 #' @param output_streams A stream raster generated with the initial bbox.
 #' @param output_pointer A flow direction raster generated with the initial bbox.
 #' @param snap_dist numeric; distance to snap marker to output_streams raster.
-#'
+#' @noRd
 #' @return A sf polygon of a watershed
 #'
 get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer, snap_dist) {
@@ -389,10 +389,10 @@ get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer, snap_
 
 
 
-#' Get Current Conditions
+#' Get USGS Current Conditions
 #'
 #' @return a \code{tibble} with current conditions and attributes from USGS dashboard.
-#'
+#' @noRd
 #' @note The time zone used in the URL call is the R session time zone. Also, the time is 1-hour behind.
 #' Here are the attributes that are with the data.frame: AgencyCode,SiteNumber,SiteName,SiteTypeCode,Latitude,Longitude,
 #' CurrentConditionID,ParameterCode,TimeLocal,TimeZoneCode,Value,
@@ -489,4 +489,128 @@ current_conditions <- function(){
                                                       "#000099",
                                                       "#000000"))
     )
+}
+
+
+
+#' @title Get Instananeous Values
+#' @param sites A character vector of site ids.
+#' @param period A numeric.
+#' @noRd
+#' @return A data.frame.
+get_iv <- function(sites, period) {
+
+  df_final <- data.frame()
+
+  for(i in sites){
+  base_url <- paste0("https://waterservices.usgs.gov/nwis/iv/?format=rdb&sites=",
+                       i,
+                       "&period=P",period,"D&parameterCd=00060&siteStatus=all"
+                     )
+
+  # try to download the data
+  error <- httr::GET(url = base_url,
+                     httr::write_disk(path = file.path(tempdir(),
+                                                       "usgs_tmp.csv"),
+                                      overwrite = TRUE))
+  # read RDB file to R
+  df <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
+                          header = TRUE,
+                          sep = "\t",
+                          stringsAsFactors = FALSE)
+
+  base_url_site <- paste0("https://waterservices.usgs.gov/nwis/site/?format=rdb&sites=",
+                     i,"&siteStatus=all"
+  )
+
+  # try to download the data
+  error_site <- httr::GET(url = base_url_site,
+                     httr::write_disk(path = file.path(tempdir(),
+                                                       "usgs_tmp.csv"),
+                                      overwrite = TRUE))
+  # read RDB file to R
+  df_site <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
+                          header = TRUE,
+                          sep = "\t",
+                          stringsAsFactors = FALSE)
+  #remove excess data
+  df_site <- df_site[-1,]
+
+  df <- df[-1,-6]
+
+  df <- df %>% dplyr::mutate(dplyr::across(dplyr::contains(c('agency_cd', 'site_no', 'datetime')), ~dplyr::na_if(.,"")))
+
+  df <- df %>% dplyr::rename_with(~paste0('flow_chr'), dplyr::contains('_00060')) %>%
+    select(site_no, datetime, flow_chr)
+
+  df <- df %>% dplyr::mutate(flow_num = as.numeric(gsub("([0-9]+).*$", "\\1", flow_chr)),
+                             datetime = as.POSIXct(datetime, format="%Y-%m-%d %H:%M"))
+
+  df <- df %>% dplyr::left_join(df_site, by = 'site_no')
+  df_final <- rbind(df_final, df)
+
+  }
+
+  df_final
+
+}
+
+
+#' @keywords internal
+#' @description Taken from the interals of the \link{mapedit} package
+add_select_script <- function(lf, styleFalse, styleTrue, ns="") {
+  ## check for existing onRender jsHook?
+
+  htmlwidgets::onRender(
+    lf,
+    sprintf(
+      "
+function(el,x) {
+  var lf = this;
+  var style_obj = {
+    'false': %s,
+    'true': %s
+  }
+  // define our functions for toggling
+  function toggle_style(layer, style_obj) {
+    layer.setStyle(style_obj);
+  };
+  function toggle_state(layer, selected, init) {
+    if(typeof(selected) !== 'undefined') {
+      layer._mapedit_selected = selected;
+    } else {
+      selected = !layer._mapedit_selected;
+      layer._mapedit_selected = selected;
+    }
+    if(typeof(Shiny) !== 'undefined' && Shiny.onInputChange && !init) {
+      Shiny.onInputChange(
+        '%s-mapedit_selected',
+        {
+          'group': layer.options.group,
+          'id': layer.options.layerId,
+          'selected': selected
+        }
+      )
+    }
+    return selected;
+  };
+  // set up click handler on each layer with a group name
+  lf.eachLayer(function(lyr){
+    if(lyr.on && lyr.options && lyr.options.layerId) {
+      // start with all unselected ?
+      toggle_state(lyr, false, init=true);
+      toggle_style(lyr, style_obj[lyr._mapedit_selected]);
+      lyr.on('click',function(e){
+        var selected = toggle_state(e.target);
+        toggle_style(e.target, style_obj[String(selected)]);
+      });
+    }
+  });
+}
+",
+jsonlite::toJSON(styleFalse, auto_unbox=TRUE),
+jsonlite::toJSON(styleTrue, auto_unbox=TRUE),
+ns
+    )
+  )
 }
