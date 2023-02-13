@@ -815,48 +815,6 @@ streamnetworkMod <- function(input, output, session, values){
 
   })
 
-  observeEvent(input$submit2, ignoreInit = TRUE, {
-
-    req(!is.null(values$output_ws))
-
-    p <- shiny::Progress$new()
-    p$set(message = "Changing Threshold",
-          detail = "This may take a little bit...",
-          value = 1/2)
-
-    promises::future_promise({
-
-
-    ws_poly <- get_whitebox_streams(values$data_sf,
-                                    input$map_res,
-                                    threshold = input$threshold)
-
-
-    }) %...>% {
-
-      values$streams <- .[[5]]
-      values$output_ws <- .[[4]]
-
-      leaf_prox <- leaflet::leafletProxy('leaf_map', session)  %>%
-
-      leaflet::clearGroup(group = c(paste0('raster', vals$count))) %>%
-
-      leaflet::clearGroup(group = c(paste0('poly', vals$count)))
-
-      vals$count <- sample(0:10000, size = 1)
-
-      leaf_prox %>%
-
-      leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-                             color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
-
-      leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
-
-    } %>%
-      finally(~p$close())
-
-  })
-
 
   # keep track of newly drawn shapes
   drawnshapes <- list()
