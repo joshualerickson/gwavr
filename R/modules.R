@@ -666,24 +666,6 @@ leaf_map <-
     }
   )
 
-  # keep track of newly drawn shapes
-  basins <- list()
-
-  # we are fortunate here since we get an event
-  #   draw_all_features
-  observeEvent(
-    input$leaf_map_draw_all_features,
-    {
-      basins <<- lapply(
-        values$basin$id,
-        function(ftr) {
-          ftr$properties$`_leaflet_id`
-        }
-      )
-      print(basins)
-    }
-
-  )
 
   # observe our simple little button to remove
   observeEvent(
@@ -770,11 +752,6 @@ streamnetworkMod <- function(input, output, session, values){
         ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
-      leaflet::addControl(html = tags$div(style="display: inline-block;vertical-align:top; width: 45%;",
-                                          shiny::actionButton(
-        ns('submit2'), 'check',
-        width = '100%')),
-        className = "fieldset { border: 0;}")%>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::actionButton(
         ns('submit'), 'Run',
         width = '100%'))) %>%
@@ -783,7 +760,7 @@ streamnetworkMod <- function(input, output, session, values){
                                      markerOptions = F,
                                      polygonOptions = T, targetGroup = 'draw') %>%
       leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
-                          position = 'bottomleft',
+                          position = 'bottomright',
                           className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%

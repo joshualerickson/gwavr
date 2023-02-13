@@ -248,13 +248,13 @@ get_whitebox_streams <- function(aoi,
   terra::writeRaster(ele, output, overwrite = T)
 
   # perform smoothing and fill depressions
-    whitebox::wbt_feature_preserving_smoothing(
-      dem = output,
-      output = output
-    )
+  whitebox::wbt_feature_preserving_smoothing(
+    dem = output,
+    output = output
+  )
 
-    whitebox::wbt_breach_depressions(dem = output,
-                                     output = output)
+  whitebox::wbt_breach_depressions(dem = output,
+                                   output = output)
 
   # get pointer (flow direction) and accumulation
   output_pointer <- tempfile(fileext = '.tif')
@@ -267,7 +267,7 @@ get_whitebox_streams <- function(aoi,
   # extract streams based on threshold
   output_streams <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold)
+  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = 1000)
 
   # get stream link identifier
   pour_pts <- tempfile(fileext = '.tif')
@@ -285,25 +285,13 @@ get_whitebox_streams <- function(aoi,
   output_upstr_channel_length <- tempfile(fileext = '.tif')
   whitebox::wbt_length_of_upstream_channels(output_pointer, output_streams, output_upstr_channel_length)
 
-  # get max upstream distance
-  output_maxdist <- tempfile(fileext = '.tif')
-  whitebox::wbt_farthest_channel_head(output_pointer, output_streams, output_maxdist)
-
-  # get horton
-  output_horton <- tempfile(fileext = '.tif')
-  whitebox::wbt_horton_stream_order(output_pointer, output_streams, output_horton)
+  # get slope
+  output_slope <- tempfile(fileext = '.tif')
+  whitebox::wbt_stream_link_slope(output_pointer, pour_pts,output, output_slope)
 
   # get strahler
   output_strahler <- tempfile(fileext = '.tif')
   whitebox::wbt_strahler_stream_order(output_pointer, output_streams, output_strahler)
-
-  # get shreve
-  output_shreve <- tempfile(fileext = '.tif')
-  whitebox::wbt_shreve_stream_magnitude(output_pointer, output_streams, output_shreve)
-
-  # get hack
-  output_hack <- tempfile(fileext = '.tif')
-  whitebox::wbt_hack_stream_order(output_pointer, output_streams, output_hack)
 
   # get mainstream
   output_mainstream <- tempfile(fileext = '.tif')
@@ -325,24 +313,67 @@ get_whitebox_streams <- function(aoi,
   output_stream_vector <- tempfile(fileext = '.shp')
 
   whitebox::wbt_raster_streams_to_vector(output_streams, output_pointer, output_stream_vector)
-  stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
+  stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj)
 
-#   # now get other stream vectors
-#   # dist2outlet
-#   output_stream_vector <- tempfile(fileext = '.shp')
-#   whitebox::wbt_raster_streams_to_vector(output_dist2out, output_pointer, output_stream_vector)
-#   stream_vector_dist2out <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
-#
-#   # trib id
-#   output_stream_vector <- tempfile(fileext = '.shp')
-#   whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector)
-#   stream_vector_tribid <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
-#
-#   # upstream channel length
-#   output_stream_vector <- tempfile(fileext = '.shp')
-#   whitebox::wbt_raster_streams_to_vector(output_upstr_channel_length, output_pointer, output_stream_vector)
-#   stream_vector_ucl <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>% sf::st_drop_geometry()
+  # now get other stream vectors
+  # dist2outlet
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_dist2out, output_pointer, output_stream_vector)
+  stream_vector_dist2out <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(dist2out = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
 
+  # trib id
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector)
+  stream_vector_tribid <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(tribid = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
+
+  # upstream channel length
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_upstr_channel_length, output_pointer, output_stream_vector)
+  stream_vector_ucl <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(ucl = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
+
+  # slope
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_slope, output_pointer, output_stream_vector)
+  stream_vector_slope <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(slope = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
+
+  # strahler
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_strahler, output_pointer, output_stream_vector)
+  stream_vector_strahler <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(strahler = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
+
+  # mainstream
+  output_stream_vector <- tempfile(fileext = '.shp')
+  whitebox::wbt_raster_streams_to_vector(output_mainstream, output_pointer, output_stream_vector)
+  stream_vector_mainstem <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+    sf::st_set_crs(prj) %>%
+    dplyr::select(-FID) %>%
+    dplyr::rename(mainstem = 'STRM_VAL') %>%
+    sf::st_set_crs(prj)
+
+  stream_vect_final <- sf::st_join(stream_vector,stream_vector_tribid, sf::st_contains)
+  stream_vect_final <- sf::st_join(stream_vect_final,stream_vector_strahler,sf::st_contains)
+  stream_vect_final <- sf::st_join(stream_vect_final,stream_vector_slope,sf::st_contains)
+  stream_vect_final <- sf::st_join(stream_vect_final,stream_vector_mainstem,sf::st_covered_by)
   final_data <- list(output_streams_rast = terra::rast(output_streams),
                      output_streams_path = output_streams,
                      output_pointer_path = output_pointer,
