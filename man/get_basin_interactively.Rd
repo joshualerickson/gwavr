@@ -60,7 +60,7 @@ you need to make sure that you are on the most current raster or the app will cr
 \examples{
 
 if(interactive()){
-nhdplus_data <- get_basin_interactively()
+basin_data <- get_basin_interactively()
 }
 
 

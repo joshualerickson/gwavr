@@ -480,9 +480,7 @@ basinMod <- function(input, output, session, values){
     font-family: inherit;
     padding: 2.5px;}"
 
-  #starting leaflet map
-  output$leaf_map <- leaflet::renderLeaflet({
-
+leaf_map <-
     base_map() %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
@@ -496,25 +494,33 @@ basinMod <- function(input, output, session, values){
         ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
-      leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+      leaflet.extras::addDrawToolbar(polylineOptions = F,
+                                     circleOptions = F,
+                                     circleMarkerOptions = F,
                                      rectangleOptions = T,
                                      markerOptions = T,
-                                     polygonOptions = T, targetGroup = 'draw') %>%
+                                     polygonOptions = T,
+                                     targetGroup = 'draw',
+                                     editOptions = leaflet.extras::editToolbarOptions(F, T)) %>%
       leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
-                          position = 'bottomleft',
+                          position = 'bottomright',
                           className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
       leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
+ # })
+
+  output$leaf_map <- leaflet::renderLeaflet({
+   leaf_map
   })
 
     # create a counter
 
     vals <- shiny::reactiveValues(count = 0)
 
-  observeEvent(input$leaf_map_draw_new_feature, {
+    observeEvent(input$leaf_map_draw_new_feature, {
 
     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
@@ -579,18 +585,21 @@ basinMod <- function(input, output, session, values){
       values$output_fa <- .[[6]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
+      leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
 
       } else {
 
       values$basin <- .
+      samp <- sample(1:10000,size = 1, replace = T)
+      values$basin <- values$basin %>% mutate(id = samp)
       values$out <- list(values$basin)
-      names(values$out) <- paste0('Basin_',sample(1:10000,size = 1, replace = T))
+      names(values$out) <- paste0('Basin_',samp)
 
       values$basin_data_list <- append(values$basin_data_list, values$out)
 
+
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addPolygons(data = values$basin)
+      leaflet::addPolygons(data = values$basin)
 
       }
 
@@ -637,6 +646,9 @@ basinMod <- function(input, output, session, values){
 
     })
 
+
+
+
   # keep track of newly drawn shapes
   drawnshapes <- list()
 
@@ -654,6 +666,24 @@ basinMod <- function(input, output, session, values){
     }
   )
 
+  # keep track of newly drawn shapes
+  basins <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      basins <<- lapply(
+        values$basin$id,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+      print(basins)
+    }
+
+  )
 
   # observe our simple little button to remove
   observeEvent(
@@ -740,6 +770,14 @@ streamnetworkMod <- function(input, output, session, values){
         ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(style="display: inline-block;vertical-align:top; width: 45%;",
+                                          shiny::actionButton(
+        ns('submit2'), 'check',
+        width = '100%')),
+        className = "fieldset { border: 0;}")%>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::actionButton(
+        ns('submit'), 'Run',
+        width = '100%'))) %>%
       leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
                                      rectangleOptions = T,
                                      markerOptions = F,
@@ -754,8 +792,9 @@ streamnetworkMod <- function(input, output, session, values){
                                 overlayGroups = c("Hydrography"))
   })
 
-  observeEvent(input$leaf_map_draw_new_feature, {
+  observeEvent(input$submit, {
 
+    req(!is.null(input$leaf_map_draw_new_feature))
     # make sure counter is at zero
 
     vals$count <- sample(0:10000, size = 1)
@@ -799,9 +838,9 @@ streamnetworkMod <- function(input, output, session, values){
 
   })
 
-  observeEvent(input$threshold, ignoreInit = TRUE, {
+  observeEvent(input$submit2, ignoreInit = TRUE, {
 
-    req(values$output_ws)
+    req(!is.null(values$output_ws))
 
     p <- shiny::Progress$new()
     p$set(message = "Changing Threshold",

@@ -53,7 +53,7 @@ the data.frame that is returned, e.g. rate of change, percentile description.
 \examples{
 
 if(interactive()){
-nhdplus_data <- get_usgs_instantaneous_interactively()
+iv_usgs <- get_usgs_instantaneous_interactively()
 }
 
 

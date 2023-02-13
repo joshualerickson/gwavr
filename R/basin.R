@@ -39,7 +39,7 @@
 #' @examples
 #'
 #' if(interactive()){
-#' nhdplus_data <- get_basin_interactively()
+#' basin_data <- get_basin_interactively()
 #' }
 #'
 #'
@@ -47,9 +47,6 @@ get_basin_interactively <- function(ns = 'basin-ui',
                                       viewer = shiny::paneViewer(),
                                       title = 'Delineate Basin',
                                       ...) {
-
-  #spherical geometry switched off
-  #sf::sf_use_s2(FALSE)
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 

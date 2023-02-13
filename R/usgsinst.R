@@ -34,7 +34,7 @@
 #' @examples
 #'
 #' if(interactive()){
-#' nhdplus_data <- get_usgs_instantaneous_interactively()
+#' iv_usgs <- get_usgs_instantaneous_interactively()
 #' }
 #'
 #'
