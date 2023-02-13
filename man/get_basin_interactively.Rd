@@ -42,8 +42,8 @@ Once the user has drawn the bounding box then you can use the marker as a pour p
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
-\item Draw bounding box (rectangle).
+\item Input a well-suited DEM zoom level, stream threshold (resolution) and snapping distance.
+\item Draw bounding box (rectangle or polygon).
 \item Use marker to place pour point(s).
 \item If necessary, change 'Cell Threshold' to change drainage density.
 \item Repeat steps 1-4 if needed.

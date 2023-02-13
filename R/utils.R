@@ -267,7 +267,7 @@ get_whitebox_streams <- function(aoi,
   # extract streams based on threshold
   output_streams <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = 1000)
+  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold)
 
   # get stream link identifier
   pour_pts <- tempfile(fileext = '.tif')
@@ -565,11 +565,73 @@ get_iv <- function(sites, period) {
   df <- df %>% dplyr::rename_with(~paste0('flow_chr'), dplyr::contains('_00060')) %>%
     select(site_no, datetime, flow_chr)
 
-  df <- df %>% dplyr::mutate(flow_num = as.numeric(gsub("([0-9]+).*$", "\\1", flow_chr)),
+  df <- df %>% dplyr::mutate(flow_num = as.numeric(flow_chr),
                              datetime = as.POSIXct(datetime, format="%Y-%m-%d %H:%M"))
 
   df <- df %>% dplyr::left_join(df_site, by = 'site_no')
   df_final <- rbind(df_final, df)
+
+  }
+
+  df_final
+
+}
+
+
+
+#' @title Get daily Values
+#' @param sites A character vector of site ids.
+#' @noRd
+#' @return A data.frame.
+get_dv <- function(sites) {
+
+  df_final <- data.frame()
+
+  for(i in sites){
+    base_url <- paste0("https://waterservices.usgs.gov/nwis/dv/?format=rdb&sites=",
+                       i,"&startDT=1800-02-01&siteStatus=all"
+    )
+
+    # try to download the data
+    error <- httr::GET(url = base_url,
+                       httr::write_disk(path = file.path(tempdir(),
+                                                         "usgs_tmp.csv"),
+                                        overwrite = TRUE))
+    # read RDB file to R
+    df <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
+                            header = TRUE,
+                            sep = "\t",
+                            stringsAsFactors = FALSE)
+
+    base_url_site <- paste0("https://waterservices.usgs.gov/nwis/site/?format=rdb&sites=",
+                            i,"&siteStatus=all"
+    )
+
+    # try to download the data
+    error_site <- httr::GET(url = base_url_site,
+                            httr::write_disk(path = file.path(tempdir(),
+                                                              "usgs_tmp.csv"),
+                                             overwrite = TRUE))
+    # read RDB file to R
+    df_site <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
+                                 header = TRUE,
+                                 sep = "\t",
+                                 stringsAsFactors = FALSE)
+    #remove excess data
+    df_site <- df_site[-1,]
+
+    df <- df[-1,]
+
+    df <- df %>% dplyr::mutate(dplyr::across(dplyr::contains(c('agency_cd', 'site_no', 'datetime')), ~dplyr::na_if(.,"")))
+
+    df <- df %>% dplyr::rename_with(~paste0('flow_chr'), dplyr::ends_with('_00060_00003')) %>%
+      select(site_no, datetime, flow_chr)
+
+    df <- df %>% dplyr::mutate(flow_num = as.numeric(flow_chr),
+                               datetime = as.POSIXct(datetime, format="%Y-%m-%d"))
+
+    df <- df %>% dplyr::left_join(df_site, by = 'site_no')
+    df_final <- rbind(df_final, df)
 
   }
 

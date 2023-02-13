@@ -1015,3 +1015,170 @@ observeEvent(input$period,{
 
 }
 
+
+#' Shiny Module UI for United States Geologic Survey (USGS) daily values
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+usgsdvModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for United States Geologic Survey (USGS) daily values
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+usgsdvMod <- function(input, output, session, values){
+
+  ns <- session$ns
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  p <- shiny::Progress$new()
+  p$set(message = "Setting up dashboard...",
+        detail = "This may take a few seconds...",
+        value = 1/2)
+
+  promises::future_promise({
+
+    data('old_usgs_sites', package = 'gwavr')
+
+    sites <- sf::st_as_sf(df_site_new, coords = c('location.coordinates1',
+                                                                      'location.coordinates2'),
+                                          crs = 4326)
+
+    cc <- current_conditions()
+
+    list(cc, sites)
+
+  }) %...>% {
+
+    values$cc <- .[[1]]
+
+    values$sites <- .[[2]]
+
+    values$cc_sf <- sf::st_as_sf( values$cc, coords = c('Longitude', 'Latitude')) %>%
+      dplyr::mutate(time = as.POSIXct(values$cc$TimeLocal,format="%Y-%m-%dT%H:%M:%OS"))
+
+    labs <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
+<div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$cc_sf$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$cc_sf$SiteNumber,
+'</div>
+            <div style="border:1px solid #ddd; margin:3px 0; padding:3px 5px;">
+                Discharge, cubic feet per second
+                <div style="font-size:110%;">',values$cc_sf$Value,' ft3/s @ ',format(as.POSIXct(values$cc_sf$time), format = "%H:%M:%S"),' ', values$cc_sf$TimeZoneCode,'</div>
+                <div style="font-weight:bold;"></div>
+            </div>
+            <div style="font-size:90%;">',ifelse(!is.na(values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription,' :', values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription)),'</div>
+            <div style="font-size:90%;">Rate of Change: ', values$cc_sf$RateOfChangeUnitPerHour,' ft3/s per hour</div>
+        </div></div></div>')
+
+    labs_sites <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
+<div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$sites$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$sites$SiteNumber,
+'</div></div></div></div>')
+
+    leaf_map <-
+      base_map() %>%
+      leaflet::addProviderTiles(provider = 'Esri.WorldStreetMap') %>%
+      leaflet::addCircleMarkers(data = values$cc_sf,
+                                fillColor = 'blue',
+                                radius = 5,
+                                label = lapply(labs, HTML),
+                                layerId = ~values$cc_sf$SiteNumber
+      ) %>% leaflet::addCircleMarkers(data = values$sites,
+                                fillColor = 'red',
+                                radius = 4,
+                                weight = 0.2,
+                                stroke = F,
+                                label = lapply(labs_sites, HTML),
+                                layerId = ~values$sites$SiteNumber) %>%
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter", 'OpenTopoMap'),
+                                overlayGroups = c("Hydrography"))%>%
+      leaflet::addLegend("bottomright",
+                colors = c("blue",  "red"),
+                labels = c("Current", "Retired"),
+                title = "USGS Monitoring Stations",
+                opacity = 1)
+
+    output$leaf_map <- leaflet::renderLeaflet({
+      add_select_script(
+        leaf_map,
+        styleFalse = list(fillOpacity = 1, weight = 3, opacity = 1),
+        styleTrue = list(fillOpacity = .25, weight = 1, opacity = .5),
+        ns = session$ns(NULL)
+      )
+    })
+
+  } %>%
+    finally(~p$close())
+
+
+  id = "mapedit"
+  select_evt = paste0(id, "_selected")
+
+  values$df <- data.frame()
+  values$period <- vector()
+
+  # a container for our selections
+  observeEvent(input[[select_evt]],{
+    # when used in modules, we get an event with blank id
+    #  on initialize so also make sure we have an id
+    id = as.character(input[[select_evt]]$id)
+    if(nrow(values$df) == 0 && !is.null(id)) {
+      values$df <- data.frame(
+        id = id,
+        selected = input[[select_evt]]$selected,
+        stringsAsFactors = FALSE
+      )
+    } else {
+      # see if already exists
+      loc <- which(values$df$id == id)
+
+      if(length(loc) > 0) {
+        values$df[loc, "selected"] <- input[[select_evt]]$selected
+      } else {
+        values$df[nrow(values$df) + 1, ] <- c(id, input[[select_evt]]$selected)
+      }
+    }
+
+  })
+
+
+}
+

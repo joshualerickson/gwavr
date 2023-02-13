@@ -5,9 +5,9 @@
 \title{Get Stream Network Interactively}
 \usage{
 get_stream_network_interactively(
-  ns = "basin-ui",
+  ns = "streamnetwork-ui",
   viewer = shiny::paneViewer(),
-  title = "Delineate Basin",
+  title = "Streamnetwork",
   ...
 )
 }
@@ -36,13 +36,14 @@ shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model 
 and {whitebox} package to delineate the stream network and watersheds (see details).
 }
 \details{
-This function uses the package \link{elevatr} to download the DEM
-Once the user has drawn the bounding box then you can use the marker as a pour point location.
+This function uses the package \link{elevatr} to download the DEM.
+Once the user has drawn the bounding box and selected appropriate zoom (resolution) and threshold then
+the app will create basins and streams.
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
-\item Draw bounding box (rectangle).
+\item Input a well-suited DEM zoom level and stream threshold (resolution).
+\item Draw bounding box (rectangle or polygon).
 \item Wait for layers to respond.
 \item when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
 }
@@ -53,7 +54,7 @@ prior to running the flow direction and flow accumulation (both d8) algorithms.
 \examples{
 
 if(interactive()){
-nhdplus_data <- get_stream_network_interactively()
+streamnetwork <- get_stream_network_interactively()
 }
 
 

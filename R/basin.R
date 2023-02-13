@@ -26,8 +26,8 @@
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level, stream threshold (cells) and snapping distance.
-#' 2. Draw bounding box (rectangle).
+#' 1. Input a well-suited DEM zoom level, stream threshold (resolution) and snapping distance.
+#' 2. Draw bounding box (rectangle or polygon).
 #' 3. Use marker to place pour point(s).
 #' 4. If necessary, change 'Cell Threshold' to change drainage density.
 #' 5. Repeat steps 1-4 if needed.
@@ -112,7 +112,7 @@ $(document).on('shiny:disconnected', function() {
     observeEvent(input$done, {
 
       shiny::stopApp(
-        values$basin_data_list
+        dplyr::bind_rows(values$basin_data_list)
       )
 
     })

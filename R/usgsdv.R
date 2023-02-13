@@ -1,8 +1,8 @@
-#' Get Stream Network Interactively
+#' Get United States Geologic Survey (USGS) Daily Flow Values Interactively
 #'
-#' @description This function allows the user to get stream networks and watersheds interactively with a
-#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
-#' and {whitebox} package to delineate the stream network and watersheds (see details).
+#' @description This function allows the user to select United States Geologic Survey (USGS) stations
+#' and get back daily flow values based on station selected. It uses the USGS
+#' Water Services to get the values as well as the USGS Sites.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -12,41 +12,36 @@
 #'          Firefox is an exception. See Details for instructions on how to enable this
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
-#'          is "Delineate Basin".
+#'          is "Get USGS Instantaneous Flow Values".
 #' @param ... other arguments to \code{leafletOutput()} in module.
-#' @details This function uses the package \link{elevatr} to download the DEM.
-#' Once the user has drawn the bounding box and selected appropriate zoom (resolution) and threshold then
-#' the app will create basins and streams.
+#' @return A data.frame that contains flow values based on the station(s) selected
+#'         during shiny session.
+#'
+#' @note You can select multiple stations. The information from the `hover` details is not included in
+#' the data.frame that is returned, e.g. rate of change, percentile description.
+#'
+#' @details
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level and stream threshold (resolution).
-#' 2. Draw bounding box (rectangle or polygon).
-#' 3. Wait for layers to respond.
-#' 4. when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
+#' 1. Select the state(s) that you want to get data for.
+#' 2. Select the sites you want to retrieve.
+#' 3. When finished, press 'done' and sites daily flow values will be saved to
+#' a data.frame in local environment.
 #'
-#' In addition, this function uses both `whitebox::wbt_feature_preserving_smoothing()` and `whitebox::wbt_breach_depressions()`
-#' prior to running the flow direction and flow accumulation (both d8) algorithms.
-#'
-#'
-#'
-#' @return A list of sf objects that the user collected during shiny session.
 #' @export
 #' @examples
 #'
 #' if(interactive()){
-#' streamnetwork <- get_stream_network_interactively()
+#' dv_usgs <- get_usgs_dv_interactively()
 #' }
 #'
 #'
 #'
-get_stream_network_interactively <- function(ns = 'streamnetwork-ui',
-                                    viewer = shiny::paneViewer(),
-                                    title = 'Streamnetwork',
-                                    ...) {
-
-  #spherical geometry switched off
-  sf::sf_use_s2(FALSE)
+get_usgs_dv_interactively <- function(ns = 'usgsdv-ui',
+                                                 viewer = shiny::paneViewer(),
+                                                 title = 'Get USGS Daily Flow Values',
+                                                 ...) {
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 
@@ -63,15 +58,15 @@ Shiny.addCustomMessageHandler(
   })
 "
   )),miniUI::miniContentPanel(
-    streamnetworkModUI(ns, height = '97%'),
+    usgsinstModUI(ns, height = '97%'),
     height=NULL, width=NULL
   ),
-  miniUI::gadgetTitleBar(
-    title = title,
-    right = miniUI::miniTitleBarButton("done", "Done", primary = TRUE)
-  ),
-  tags$script(HTML(
-    "
+miniUI::gadgetTitleBar(
+  title = title,
+  right = miniUI::miniTitleBarButton("done", "Done", primary = TRUE)
+),
+tags$script(HTML(
+  "
 // close browser window on session end
 $(document).on('shiny:disconnected', function() {
   // check to make sure that button was pressed
@@ -84,7 +79,7 @@ $(document).on('shiny:disconnected', function() {
   }
 })
 "
-  ))
+))
   )
 
 
@@ -93,7 +88,7 @@ $(document).on('shiny:disconnected', function() {
     values <- reactiveValues()
 
     crud_mod <- reactive(shiny::callModule(
-      streamnetworkMod,
+      usgsdvMod,
       ns,
       values = values
     ))
@@ -111,9 +106,31 @@ $(document).on('shiny:disconnected', function() {
     #used to stop the app via button and retain selections
     observeEvent(input$done, {
 
-      shiny::stopApp(
-        values$basin_data_list
-      )
+      p <- shiny::Progress$new()
+      p$set(message = "Downloading daily values...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+
+      promises::future_promise({
+
+        sites <- values$df[as.logical(values$df$selected),1]
+        list(sites = sites)
+
+      }) %...>% {
+
+
+        suppressWarnings(values$final_dv <- get_dv(.[['sites']]))
+
+
+
+        shiny::stopApp(
+
+          values$final_dv
+
+        )
+
+      }  %>%
+        finally(~p$close())
 
     })
 
