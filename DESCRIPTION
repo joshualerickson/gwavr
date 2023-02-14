@@ -37,5 +37,7 @@ Imports:
 Suggests: 
     spelling,
     knitr,
-    rmarkdown
+    rmarkdown,
+    testthat (>= 3.0.0)
 Language: en-US
+Config/testthat/edition: 3

@@ -551,8 +551,9 @@ get_iv <- function(sites, period) {
                                                        "usgs_tmp.csv"),
                                       overwrite = TRUE))
   # read RDB file to R
-  df_site <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
+  df_site <- utils::read.csv(file.path(tempdir(),"usgs_tmp.csv"),
                           header = TRUE,
+                          comment.char = '#',
                           sep = "\t",
                           stringsAsFactors = FALSE)
   #remove excess data
@@ -613,10 +614,11 @@ get_dv <- function(sites) {
                                                               "usgs_tmp.csv"),
                                              overwrite = TRUE))
     # read RDB file to R
-    df_site <- utils::read.table(file.path(tempdir(),"usgs_tmp.csv"),
-                                 header = TRUE,
-                                 sep = "\t",
-                                 stringsAsFactors = FALSE)
+    df_site <- utils::read.csv(file.path(tempdir(),"usgs_tmp.csv"),
+                               header = TRUE,
+                               comment.char = '#',
+                               sep = "\t",
+                               stringsAsFactors = FALSE)
     #remove excess data
     df_site <- df_site[-1,]
 
