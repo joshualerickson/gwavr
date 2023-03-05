@@ -1,7 +1,7 @@
 #' Get Stream Network Interactively
 #'
 #' @description This function allows the user to get stream networks and watersheds interactively with a
-#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 #' and {whitebox} package to delineate the stream network and watersheds (see details).
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
@@ -14,14 +14,16 @@
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
 #' @param ... other arguments to \code{leafletOutput()} in module.
-#' @details This function uses the package \link{elevatr} to download the DEM.
-#' Once the user has drawn the bounding box and selected appropriate zoom (resolution) and threshold then
+#' @param dem A terra or raster DEM object if you want to add.
+#' @note If you add your own DEM then you don't need to draw a bounding box.
+#' @details This function uses the package \link{elevatr} to download the DEM (unless you provide your own).
+#' Once the user has drawn the bounding box or inputed DEM and selected appropriate zoom (resolution) and threshold then
 #' the app will create basins and streams.
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level and stream threshold (resolution).
-#' 2. Draw bounding box (rectangle or polygon).
+#' 1. Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+#' 2. Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 #' 3. Wait for layers to respond.
 #' 4. when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
 #'
@@ -31,6 +33,8 @@
 #'
 #'
 #' @return A list of sf objects that the user collected during shiny session.
+#' Each list will contain two sf objects: `watersheds` and `streams`. The `streams` object will also return these attributes:
+#' `tribid`, `strahler`, `slope`, `length`, `mainstem`, `FID`, `STRM_VAL`.
 #' @export
 #' @examples
 #'
@@ -43,6 +47,7 @@
 get_stream_network_interactively <- function(ns = 'streamnetwork-ui',
                                     viewer = shiny::paneViewer(),
                                     title = 'Streamnetwork',
+                                    dem = NULL,
                                     ...) {
 
   #spherical geometry switched off
@@ -95,7 +100,8 @@ $(document).on('shiny:disconnected', function() {
     crud_mod <- reactive(shiny::callModule(
       streamnetworkMod,
       ns,
-      values = values
+      values = values,
+      dem = dem
     ))
 
     observe({crud_mod()})

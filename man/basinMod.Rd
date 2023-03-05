@@ -4,7 +4,7 @@
 \alias{basinMod}
 \title{Shiny Module Server for basin generation}
 \usage{
-basinMod(input, output, session, values)
+basinMod(input, output, session, values, dem)
 }
 \arguments{
 \item{input}{Shiny server function input}
@@ -14,6 +14,8 @@ basinMod(input, output, session, values)
 \item{session}{Shiny server function session}
 
 \item{values}{A reactive Values list to pass}
+
+\item{dem}{A raster or terra object dem.}
 }
 \value{
 server function for Shiny module

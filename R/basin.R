@@ -1,7 +1,7 @@
 #' Get Watershed Basin Interactively
 #'
 #' @description This function allows the user to delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 #' and {whitebox} package to delineate the basin (see details).
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
@@ -14,20 +14,22 @@
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
 #' @param ... other arguments to \code{leafletOutput()} in module.
-#' @return A list of sf objects that contain watershed polygons
+#' @param dem A terra or raster DEM object if you want to add.
+#' @return A sf object that contains watershed polygons
 #'         the user collected during shiny session.
 #'
 #' @note The marker will only work for the most current stream raster. You can have multiple areas but
-#' you need to make sure that you are on the most current raster or the app will crash.
+#' you need to make sure that you are on the most current raster when selecting basins or the app will crash. If
+#' you add your own DEM then you don't need to draw a bounding box.
 #'
 #' @details
-#' **This function will throw an error if you don't draw the bounding box (rectangle) first.**
+#' **This function will throw an error if you don't draw the bounding box (rectangle) first and you didn't include your own DEM.**
 #' Once the user has drawn the bounding box then you can use the marker as a pour point location.
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level, stream threshold (resolution) and snapping distance.
-#' 2. Draw bounding box (rectangle or polygon).
+#' 1. Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+#' 2. Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 #' 3. Use marker to place pour point(s).
 #' 4. If necessary, change 'Cell Threshold' to change drainage density.
 #' 5. Repeat steps 1-4 if needed.
@@ -46,6 +48,7 @@
 get_basin_interactively <- function(ns = 'basin-ui',
                                       viewer = shiny::paneViewer(),
                                       title = 'Delineate Basin',
+                                      dem = NULL,
                                       ...) {
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
@@ -95,7 +98,8 @@ $(document).on('shiny:disconnected', function() {
     crud_mod <- reactive(shiny::callModule(
       basinMod,
       ns,
-      values = values
+      values = values,
+      dem = dem
     ))
 
     observe({crud_mod()})

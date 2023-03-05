@@ -34,12 +34,12 @@
 #' @examples
 #'
 #' if(interactive()){
-#' iv_usgs <- get_usgs_instantaneous_interactively()
+#' iv_usgs <- get_usgs_iv_interactively()
 #' }
 #'
 #'
 #'
-get_usgs_instantaneous_interactively <- function(ns = 'usgsiv-ui',
+get_usgs_iv_interactively <- function(ns = 'usgsiv-ui',
                                     viewer = shiny::paneViewer(),
                                     title = 'Get USGS Instantaneous Flow Values',
                                     ...) {

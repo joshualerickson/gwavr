@@ -8,6 +8,7 @@ get_basin_interactively(
   ns = "basin-ui",
   viewer = shiny::paneViewer(),
   title = "Delineate Basin",
+  dem = NULL,
   ...
 )
 }
@@ -25,25 +26,27 @@ behaviour in Firefox.}
 \item{title}{\code{string} to customize the title of the UI window.  The default
 is "Delineate Basin".}
 
+\item{dem}{A terra or raster DEM object if you want to add.}
+
 \item{...}{other arguments to \code{leafletOutput()} in module.}
 }
 \value{
-A list of sf objects that contain watershed polygons
+A sf object that contains watershed polygons
 the user collected during shiny session.
 }
 \description{
 This function allows the user to delineate watershed basins interactively with a
-shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 and {whitebox} package to delineate the basin (see details).
 }
 \details{
-\strong{This function will throw an error if you don't draw the bounding box (rectangle) first.}
+\strong{This function will throw an error if you don't draw the bounding box (rectangle) first and you didn't include your own DEM.}
 Once the user has drawn the bounding box then you can use the marker as a pour point location.
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level, stream threshold (resolution) and snapping distance.
-\item Draw bounding box (rectangle or polygon).
+\item Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+\item Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 \item Use marker to place pour point(s).
 \item If necessary, change 'Cell Threshold' to change drainage density.
 \item Repeat steps 1-4 if needed.
@@ -55,7 +58,8 @@ prior to running the flow direction and flow accumulation (both d8) algorithms.
 }
 \note{
 The marker will only work for the most current stream raster. You can have multiple areas but
-you need to make sure that you are on the most current raster or the app will crash.
+you need to make sure that you are on the most current raster when selecting basins or the app will crash. If
+you add your own DEM then you don't need to draw a bounding box.
 }
 \examples{
 

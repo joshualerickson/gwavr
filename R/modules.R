@@ -460,10 +460,11 @@ basinModUI <- function(id, ...){
 #' @param output Shiny server function output
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
+#' @param dem A raster or terra object dem.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-basinMod <- function(input, output, session, values){
+basinMod <- function(input, output, session, values, dem){
 
   ns <- session$ns
 
@@ -487,10 +488,6 @@ leaf_map <-
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
-        ns('snap_dist'), 'Snap Distance (m)',value = 1,min = 1, max = 15000,
-        width = '100%')),
-        className = "fieldset { border: 0;}") %>%
-      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
@@ -507,15 +504,47 @@ leaf_map <-
                           className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
-      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
- # })
 
   output$leaf_map <- leaflet::renderLeaflet({
    leaf_map
   })
 
+observe({
+  if(!is.null(dem) & vals$count == 0) {
+      p <- shiny::Progress$new()
+      p$set(message = "Uploading your DEM...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+
+    promises::future_promise({
+
+    ws_dem <- get_whitebox_streams(ele = dem,
+                                   threshold = 1000)
+
+      }) %...>% {
+
+    values$streams <- .[['output_streams_rast']]
+    values$output_streams <- .[[2]]
+    values$output_pointer <- .[[3]]
+    values$output_fa <- .[[6]]
+
+    bb <- sf::st_bbox(dem)
+
+    leaflet::leafletProxy('leaf_map', session) %>%
+      leaflet::addRasterImage(x = values$streams,
+                              colors = 'blue',
+                              group = paste0('raster', vals$count))%>%
+      leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+
+
+
+    } %>%
+      finally(~p$close())
+}
+})
     # create a counter
 
     vals <- shiny::reactiveValues(count = 0)
@@ -555,6 +584,8 @@ leaf_map <-
 
     promises::future_promise({
 
+      if(is.null(dem)){
+
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
       req(data_sf)
@@ -562,18 +593,36 @@ leaf_map <-
       ws_dem <- get_whitebox_streams(data_sf,
                                      input$map_res,
                                      threshold = input$threshold)
-
       } else {
 
       req(values$output_streams)
 
       ws_poly <- get_whitebox_ws(data_sf,
                                  output_streams = values$output_streams,
-                                 output_pointer =  values$output_pointer,
-                                 snap_dist = input$snap_dist)
+                                 output_pointer =  values$output_pointer)
 
       }
 
+      } else {
+
+     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+          req(data_sf)
+
+      ws_dem <- get_whitebox_streams(data_sf,
+                                     input$map_res,
+                                     threshold = input$threshold)
+        } else {
+
+      req(values$output_streams)
+
+      ws_poly <- get_whitebox_ws(data_sf,
+                                 prj = sf::st_crs(values$streams),
+                                 output_streams = values$output_streams,
+                                 output_pointer =  values$output_pointer)
+
+      }
+      }
 
     }) %...>% {
 
@@ -715,10 +764,11 @@ streamnetworkModUI <- function(id, ...){
 #' @param output Shiny server function output
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
+#' @param dem A raster or terra object dem.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-streamnetworkMod <- function(input, output, session, values){
+streamnetworkMod <- function(input, output, session, values, dem){
 
   ns <- session$ns
 
@@ -764,17 +814,63 @@ streamnetworkMod <- function(input, output, session, values){
                           className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
-      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
   })
 
+  observe({
+    if(!is.null(dem) & vals$count == 0) {
+      p <- shiny::Progress$new()
+      p$set(message = "Uploading your DEM...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+
+      promises::future_promise({
+
+        ws_poly <- get_whitebox_streams(ele = dem,
+                                        threshold = 1000,
+                                        prj = sf::st_crs(dem))
+
+      }) %...>% {
+
+        values$streams <- .[[5]]
+        values$output_ws <- .[[4]]
+
+        bb <- sf::st_bbox(dem)
+
+        values$out <- list(watersheds = values$output_ws, streams = values$streams)
+
+        values$basin_data_list <- append(values$basin_data_list, list(values$out))
+
+
+
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+
+        vals$count <- sample(1:10000, size = 1)
+
+        leaf_prox %>%
+          leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count)) %>%
+          leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+
+
+
+      } %>%
+        finally(~p$close())
+    }
+  })
+
+  # create a counter
+
+  vals <- shiny::reactiveValues(count = 0)
+
   observeEvent(input$submit, {
 
-    req(!is.null(input$leaf_map_draw_new_feature))
-    # make sure counter is at zero
+    if(!is.null(input$leaf_map_draw_new_feature)){
 
-    vals$count <- sample(0:10000, size = 1)
+    # make sure counter is at zero
 
       feat <- input$leaf_map_draw_new_feature
       coords <- unlist(feat$geometry$coordinates)
@@ -782,7 +878,7 @@ streamnetworkMod <- function(input, output, session, values){
 
       values$data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
         sf::st_as_sf()
-
+    }
     p <- shiny::Progress$new()
     p$set(message = "Downloading data...",
           detail = "This may take a little bit...",
@@ -790,9 +886,17 @@ streamnetworkMod <- function(input, output, session, values){
 
     promises::future_promise({
 
+      if(!is.null(input$leaf_map_draw_new_feature)){
         ws_poly <- get_whitebox_streams(values$data_sf,
                                         input$map_res,
                                         threshold = input$threshold)
+      } else {
+
+
+        ws_poly <- get_whitebox_streams(ele = dem,
+                                        threshold = input$threshold,
+                                        prj = sf::st_crs(dem))
+      }
 
     }) %...>% {
 
@@ -804,7 +908,16 @@ streamnetworkMod <- function(input, output, session, values){
         values$basin_data_list <- append(values$basin_data_list, list(values$out))
 
 
-        leaflet::leafletProxy('leaf_map', session) %>%
+        if(vals$count > 0){
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+          leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+        } else {
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+        }
+
+        vals$count <- sample(1:10000, size = 1)
+
+        leaf_prox %>%
           leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
                                color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
           leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
@@ -814,6 +927,60 @@ streamnetworkMod <- function(input, output, session, values){
       finally(~p$close())
 
   })
+
+  # # now for the dynamic threshold
+  #
+  # observeEvent(input$threshold, ignoreInit = TRUE, {
+  #
+  #   req(values$output_fa)
+  #
+  #   promises::future_promise({
+  #
+  #
+  #
+  #     # extract streams based on threshold
+  #     output_streams <- tempfile(fileext = '.tif')
+  #
+  #     whitebox::wbt_extract_streams(values$output_fa,
+  #                                   output_streams,
+  #                                   threshold = input$threshold)
+  #
+  #     get_whitebox_streams(values$data_sf,
+  #                          input$map_res,
+  #                          threshold = input$threshold)
+  #
+  #     streams_rast <- list(streams = terra::rast(output_streams),
+  #                          output_streams = output_streams)
+  #
+  #   }) %...>% {
+  #
+  #     values$streams <- .[[5]]
+  #     values$output_ws <- .[[4]]
+  #
+  #     values$out <- list(watersheds = values$output_ws, streams = values$streams)
+  #
+  #     values$basin_data_list <- append(values$basin_data_list, list(values$out))
+  #
+  #
+  #     if(vals$count > 0){
+  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+  #         leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+  #     } else {
+  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+  #     }
+  #
+  #     vals$count <- sample(1:10000, size = 1)
+  #
+  #     leaf_prox %>%
+  #       leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+  #                            color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+  #       leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+  #
+  #
+  #
+  #   }
+  #
+  # })
 
 
   # keep track of newly drawn shapes
@@ -1112,7 +1279,6 @@ leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size
 
     leaf_map <-
       base_map() %>%
-      leaflet::addProviderTiles(provider = 'Esri.WorldStreetMap') %>%
       leaflet::addCircleMarkers(data = values$cc_sf,
                                 fillColor = 'blue',
                                 radius = 5,

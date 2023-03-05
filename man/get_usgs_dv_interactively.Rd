@@ -39,7 +39,6 @@ Water Services to get the values as well as the USGS Sites.
 \details{
 \strong{Steps}
 \enumerate{
-\item Select the state(s) that you want to get data for.
 \item Select the sites you want to retrieve.
 \item When finished, press 'done' and sites daily flow values will be saved to
 a data.frame in local environment.

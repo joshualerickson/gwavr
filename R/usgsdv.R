@@ -24,9 +24,8 @@
 #'
 #' **Steps**
 #'
-#' 1. Select the state(s) that you want to get data for.
-#' 2. Select the sites you want to retrieve.
-#' 3. When finished, press 'done' and sites daily flow values will be saved to
+#' 1. Select the sites you want to retrieve.
+#' 2. When finished, press 'done' and sites daily flow values will be saved to
 #' a data.frame in local environment.
 #'
 #' @export

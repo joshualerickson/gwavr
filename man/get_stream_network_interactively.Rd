@@ -8,6 +8,7 @@ get_stream_network_interactively(
   ns = "streamnetwork-ui",
   viewer = shiny::paneViewer(),
   title = "Streamnetwork",
+  dem = NULL,
   ...
 )
 }
@@ -25,31 +26,38 @@ behaviour in Firefox.}
 \item{title}{\code{string} to customize the title of the UI window.  The default
 is "Delineate Basin".}
 
+\item{dem}{A terra or raster DEM object if you want to add.}
+
 \item{...}{other arguments to \code{leafletOutput()} in module.}
 }
 \value{
 A list of sf objects that the user collected during shiny session.
+Each list will contain two sf objects: \code{watersheds} and \code{streams}. The \code{streams} object will also return these attributes:
+\code{tribid}, \code{strahler}, \code{slope}, \code{length}, \code{mainstem}, \code{FID}, \code{STRM_VAL}.
 }
 \description{
 This function allows the user to get stream networks and watersheds interactively with a
-shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM)
+shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 and {whitebox} package to delineate the stream network and watersheds (see details).
 }
 \details{
-This function uses the package \link{elevatr} to download the DEM.
-Once the user has drawn the bounding box and selected appropriate zoom (resolution) and threshold then
+This function uses the package \link{elevatr} to download the DEM (unless you provide your own).
+Once the user has drawn the bounding box or inputed DEM and selected appropriate zoom (resolution) and threshold then
 the app will create basins and streams.
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level and stream threshold (resolution).
-\item Draw bounding box (rectangle or polygon).
+\item Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+\item Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 \item Wait for layers to respond.
 \item when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
 }
 
 In addition, this function uses both \code{whitebox::wbt_feature_preserving_smoothing()} and \code{whitebox::wbt_breach_depressions()}
 prior to running the flow direction and flow accumulation (both d8) algorithms.
+}
+\note{
+If you add your own DEM then you don't need to draw a bounding box.
 }
 \examples{
 

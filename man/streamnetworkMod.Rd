@@ -4,7 +4,7 @@
 \alias{streamnetworkMod}
 \title{Shiny Module Server for stream networks}
 \usage{
-streamnetworkMod(input, output, session, values)
+streamnetworkMod(input, output, session, values, dem)
 }
 \arguments{
 \item{input}{Shiny server function input}
@@ -14,6 +14,8 @@ streamnetworkMod(input, output, session, values)
 \item{session}{Shiny server function session}
 
 \item{values}{A reactive Values list to pass}
+
+\item{dem}{A raster or terra object dem.}
 }
 \value{
 server function for Shiny module

@@ -126,7 +126,7 @@ get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 #' @export
 #'
 base_map <- function () {
-  grp <- c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+  grp <- c("Esri.WorldStreetMap", "OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
            "OpenStreetMap", "CartoDB.DarkMatter",
            "Hydrography")
   att <- paste0("<a href='https://www.usgs.gov/'>", "U.S. Geological Survey</a> | ",
@@ -147,13 +147,15 @@ base_map <- function () {
                                    group = grp[[4]])
   map <- leaflet::addProviderTiles(map = map, provider = grp[[5]],
                                    group = grp[[5]])
+  map <- leaflet::addProviderTiles(map = map, provider = grp[[6]],
+                                   group = grp[[6]])
   opt <- leaflet::WMSTileOptions(format = "image/png",
                                  transparent = TRUE)
   map <- leaflet::addWMSTiles(map, GetURL("USGSHydroCached"),
-                              group = grp[6], options = opt, layers = "0", attribution = att)
+                              group = grp[7], options = opt, layers = "0", attribution = att)
   opt <- leaflet::layersControlOptions(collapsed = TRUE)
-  map <- leaflet::addLayersControl(map, baseGroups = grp[1:5],
-                                   overlayGroups = grp[6], options = opt)
+  map <- leaflet::addLayersControl(map, baseGroups = grp[1:6],
+                                   overlayGroups = grp[7], options = opt)
 }
 
 
@@ -225,15 +227,21 @@ nldi_basin_function <- function(point){
 #' @param z param for elevatr function get_elev_raster()
 #' @param threshold numeric; cell threshold for stream delineation
 #' @param prj A character vector with proj4string.
+#' @param ele A dem added by the user.
 #' @noRd
 #' @return a list of file paths to .tif files and a terra::rast object
 get_whitebox_streams <- function(aoi,
                                  z,
                                  threshold,
-                                 prj){
+                                 prj,
+                                 ele){
+
+
 
 
   if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
+
+  if(missing(ele)){
 
   aoi <- aoi %>% sf::st_transform(prj)
 
@@ -241,7 +249,7 @@ get_whitebox_streams <- function(aoi,
   ele <- elevatr::get_elev_raster(aoi,
                                   z = z,
                                   prj = prj,
-                                  clip = 'locations')
+                                  clip = 'locations')}
 
   # write to temp file
   output <- tempfile(fileext = '.tif')
@@ -250,57 +258,58 @@ get_whitebox_streams <- function(aoi,
   # perform smoothing and fill depressions
   whitebox::wbt_feature_preserving_smoothing(
     dem = output,
-    output = output
+    output = output,
+    verbose_mode = F
   )
 
   whitebox::wbt_breach_depressions(dem = output,
-                                   output = output)
+                                   output = output, verbose_mode = F)
 
   # get pointer (flow direction) and accumulation
   output_pointer <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_d8_pointer(output, output_pointer)
+  whitebox::wbt_d8_pointer(output, output_pointer, verbose_mode = F)
 
   output_fa <- tempfile(fileext = '.tif')
-  whitebox::wbt_d8_flow_accumulation(input = output, output = output_fa, out_type = 'cells')
+  whitebox::wbt_d8_flow_accumulation(input = output, output = output_fa, out_type = 'cells', verbose_mode = F)
 
   # extract streams based on threshold
   output_streams <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold)
+  whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold, verbose_mode = F)
 
   # get stream link identifier
   pour_pts <- tempfile(fileext = '.tif')
-  whitebox::wbt_stream_link_identifier(output_pointer,output_streams, pour_pts)
+  whitebox::wbt_stream_link_identifier(output_pointer,output_streams, pour_pts, verbose_mode = F)
 
   # get tributary identifier
   output_tribid <- tempfile(fileext = '.tif')
-  whitebox::wbt_tributary_identifier(output_pointer, output_streams, output_tribid)
+  whitebox::wbt_tributary_identifier(output_pointer, output_streams, output_tribid, verbose_mode = F)
 
   # get slope
   output_slope <- tempfile(fileext = '.tif')
-  whitebox::wbt_stream_link_slope(output_pointer, pour_pts,output, output_slope)
+  whitebox::wbt_stream_link_slope(output_pointer, pour_pts,output, output_slope, verbose_mode = F)
 
   # get length
   output_length <- tempfile(fileext = '.tif')
-  whitebox::wbt_stream_link_length(output_pointer, pour_pts,output_length)
+  whitebox::wbt_stream_link_length(output_pointer, pour_pts,output_length, verbose_mode = F)
 
   # get strahler
   output_strahler <- tempfile(fileext = '.tif')
-  whitebox::wbt_strahler_stream_order(output_pointer, output_streams, output_strahler)
+  whitebox::wbt_strahler_stream_order(output_pointer, output_streams, output_strahler, verbose_mode = F)
 
   # get mainstream
   output_mainstream <- tempfile(fileext = '.tif')
-  whitebox::wbt_find_main_stem(output_pointer, output_streams, output_mainstream)
+  whitebox::wbt_find_main_stem(output_pointer, output_streams, output_mainstream, verbose_mode = F)
 
   # get watershed associated with pour points
   output_ws <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_watershed(d8_pntr = output_pointer, pour_pts = pour_pts, output = output_ws)
+  whitebox::wbt_watershed(d8_pntr = output_pointer, pour_pts = pour_pts, output = output_ws, verbose_mode = F)
 
   # convert watershed to polygons
   output_ws_poly <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
+  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly, verbose_mode = F)
 
   ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
 
@@ -308,14 +317,14 @@ get_whitebox_streams <- function(aoi,
   # generate a stream vector
   output_stream_vector <- tempfile(fileext = '.shp')
 
-  whitebox::wbt_raster_streams_to_vector(output_streams, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_streams, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj)
 
   # now get other stream vectors
   # trib id
   output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_tribid, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector_tribid <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj) %>%
     dplyr::select(-FID) %>%
@@ -324,7 +333,7 @@ get_whitebox_streams <- function(aoi,
 
   # slope
   output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_slope, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_slope, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector_slope <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj) %>%
     dplyr::select(-FID) %>%
@@ -333,7 +342,7 @@ get_whitebox_streams <- function(aoi,
 
   # slope
   output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_length, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_length, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector_length <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj) %>%
     dplyr::select(-FID) %>%
@@ -342,7 +351,7 @@ get_whitebox_streams <- function(aoi,
 
   # strahler
   output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_strahler, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_strahler, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector_strahler <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj) %>%
     dplyr::select(-FID) %>%
@@ -351,7 +360,7 @@ get_whitebox_streams <- function(aoi,
 
   # mainstream
   output_stream_vector <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_streams_to_vector(output_mainstream, output_pointer, output_stream_vector)
+  whitebox::wbt_raster_streams_to_vector(output_mainstream, output_pointer, output_stream_vector, verbose_mode = F)
   stream_vector_mainstem <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
     sf::st_set_crs(prj) %>%
     dplyr::select(-FID) %>%
@@ -381,11 +390,10 @@ get_whitebox_streams <- function(aoi,
 #' @param prj A character vector with proj4string.
 #' @param output_streams A stream raster generated with the initial bbox.
 #' @param output_pointer A flow direction raster generated with the initial bbox.
-#' @param snap_dist numeric; distance to snap marker to output_streams raster.
 #' @noRd
 #' @return A sf polygon of a watershed
 #'
-get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer, snap_dist) {
+get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer) {
 
   if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
 
@@ -395,14 +403,14 @@ get_whitebox_ws <- function(sf_point, prj, output_streams, output_pointer, snap_
   sf::write_sf(sf_point, sf_pt, driver = 'ESRI Shapefile')
 
   output_pp <- tempfile(fileext = '.shp')
-  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = snap_dist)
+  whitebox::wbt_jenson_snap_pour_points(sf_pt, output_streams, output_pp, snap_dist = 0.001, verbose_mode = F)
 
   output_ws <- tempfile(fileext = '.tif')
 
-  whitebox::wbt_watershed(d8_pntr = output_pointer,pour_pts = output_pp,output =  output_ws)
+  whitebox::wbt_watershed(d8_pntr = output_pointer,pour_pts = output_pp,output =  output_ws, verbose_mode = F)
 
   output_ws_poly <- tempfile(fileext = '.shp')
-  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly)
+  whitebox::wbt_raster_to_vector_polygons(input = output_ws, output = output_ws_poly, verbose_mode = F)
 
   ws_poly <- sf::st_as_sf(sf::read_sf(output_ws_poly)) %>% sf::st_set_crs(prj) %>% sf::st_transform(4326)
 
