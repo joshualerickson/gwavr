@@ -3,6 +3,6 @@ utils::globalVariables(c("COMID", "HTML", "ID", "acres", "characteristic_id",
                          "group_by", "mi", "req", "sessionEnded", "setProgress",
                          "tags", "withProgress",".", "rowid", "site_no", "datetime",
                          "flow_chr", "StatisticsStatusColorFill", "StatisticsStatusColorStroke",
-                         "StatisticsStatusDescription")
+                         "StatisticsStatusDescription", "FID", "df_site_new")
 )
 

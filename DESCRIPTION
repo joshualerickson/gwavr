@@ -1,6 +1,6 @@
 Package: gwavr
 Title: Get Water Attributes Visually in R 
-Version: 0.2.1
+Version: 0.3.0
 Authors@R: 
     person(given = "Joshua",
            family = "Erickson",

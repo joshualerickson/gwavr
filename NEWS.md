@@ -1,3 +1,11 @@
+# gwavr 0.3.0  
+
+* Added new functions:  `get_streamnetwork_interactively()`, `get_usgs_iv_interactively()`, `get_usgs_dv_interactively()`.
+
+* Updated `get_basin_interactively()` to take a inputted DEM as an option.  
+
+* Added a new dependency: 'htmlwidgets'.  
+
 # gwavr 0.2.1  
 
 * Added more hydrologic unit (HUC) options via nhdplusTools to function `get_nhdplus_interactively()`.

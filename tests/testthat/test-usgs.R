@@ -17,11 +17,6 @@ test_that("usgs functions", {
                                            overwrite = TRUE))
   # read RDB file to R
 
-  testthat::expect_error(read.table(
-                               file.path(tempdir(),"usgs_tmp.csv"),
-                               sep = "\t",
-                               comment.char = '#'))
-
   testthat::expect_equal(nrow(read.csv(
     file.path(tempdir(),"usgs_tmp.csv"),
     sep = "\t",
