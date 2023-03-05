@@ -78,8 +78,10 @@ nhdplusMod <- function(input, output, session, values){
                                                                                              shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)),
                                      markerOptions = leaflet.extras::drawMarkerOptions(repeatMode = F),
                                      polygonOptions = leaflet.extras::drawRectangleOptions(repeatMode = F,
-                                                                                           shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw') %>%
-
+                                                                                           shapeOptions = leaflet.extras::drawShapeOptions(fillOpacity = 0, opacity = .75)), targetGroup = 'draw')%>%
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomleft',
+                          className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
       leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
@@ -549,33 +551,15 @@ nhdplusMod <- function(input, output, session, values){
 
  })
 
-  # # keep track of newly drawn shapes
-  # values$drawnshapes <- list()
-  #
-  #
-  # js_ping <- shiny::reactiveTimer(5000)
-  #
-  # # observe our simple little button to remove
-  # observeEvent(
-  #   js_ping(),
-  #   {
-  #     lapply(
-  #       values$drawnshapes,
-  #       function(todelete) {
-  #         session$sendCustomMessage(
-  #           "removeleaflet",
-  #           list(elid=paste0(session$ns('leaf_map')), layerid=todelete)
-  #         )
-  #       }
-  #     )
-  #   }
-  # )
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
   # we are fortunate here since we get an event
   #   draw_all_features
   observeEvent(
     input$leaf_map_draw_all_features,
     {
-      values$drawnshapes <- lapply(
+      drawnshapes <<- lapply(
         input$leaf_map_draw_all_features$features,
         function(ftr) {
           ftr$properties$`_leaflet_id`
@@ -584,9 +568,26 @@ nhdplusMod <- function(input, output, session, values){
     }
   )
 
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
 }
 
-#' Shiny Module UI for basins
+#' Shiny Module UI for basin generation
 #'
 #' @description A shiny Module to.
 #'
@@ -609,15 +610,16 @@ basinModUI <- function(id, ...){
 }
 
 
-#' Shiny Module Server for nhdplus
+#' Shiny Module Server for basin generation
 #' @param input Shiny server function input
 #' @param output Shiny server function output
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
+#' @param dem A raster or terra object dem.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-basinMod <- function(input, output, session, values){
+basinMod <- function(input, output, session, values, dem){
 
   ns <- session$ns
 
@@ -634,37 +636,82 @@ basinMod <- function(input, output, session, values){
     font-family: inherit;
     padding: 2.5px;}"
 
-  #starting leaflet map
-  output$leaf_map <- leaflet::renderLeaflet({
-
+leaf_map <-
     base_map() %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
-        ns('snap_dist'), 'Snap Distance (m)',value = 10,min = 1, max = 15000,
-        width = '100%')),
-        className = "fieldset { border: 0;}") %>%
-      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
-      leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+      leaflet.extras::addDrawToolbar(polylineOptions = F,
+                                     circleOptions = F,
+                                     circleMarkerOptions = F,
                                      rectangleOptions = T,
                                      markerOptions = T,
-                                     polygonOptions = F, targetGroup = 'draw') %>%
-
+                                     polygonOptions = T,
+                                     targetGroup = 'draw',
+                                     editOptions = leaflet.extras::editToolbarOptions(F, T)) %>%
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomright',
+                          className = 'fieldset {border:0;}') %>%
       leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
       leaflet::hideGroup(group = 'Hydrography') %>%
-      leaflet::addLayersControl(baseGroups = c("OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
+
+  output$leaf_map <- leaflet::renderLeaflet({
+   leaf_map
   })
 
-  observeEvent(input$leaf_map_draw_new_feature, {
+observe({
+  if(!is.null(dem) & vals$count == 0) {
+      p <- shiny::Progress$new()
+      p$set(message = "Uploading your DEM...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+
+    promises::future_promise({
+
+    ws_dem <- get_whitebox_streams(ele = dem,
+                                   threshold = 1000)
+
+      }) %...>% {
+
+    values$streams <- .[['output_streams_rast']]
+    values$output_streams <- .[[2]]
+    values$output_pointer <- .[[3]]
+    values$output_fa <- .[[6]]
+
+    bb <- sf::st_bbox(dem)
+
+    leaflet::leafletProxy('leaf_map', session) %>%
+      leaflet::addRasterImage(x = values$streams,
+                              colors = 'blue',
+                              group = paste0('raster', vals$count))%>%
+      leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+
+
+
+    } %>%
+      finally(~p$close())
+}
+})
+    # create a counter
+
+    vals <- shiny::reactiveValues(count = 0)
+
+    observeEvent(input$leaf_map_draw_new_feature, {
 
     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+    # make sure counter is at zero
+
+    vals$count <- sample(0:10000, size = 1)
+
     feat <- input$leaf_map_draw_new_feature
     coords <- unlist(feat$geometry$coordinates)
     coords <- matrix(coords, ncol = 2, byrow = T)
@@ -673,6 +720,7 @@ basinMod <- function(input, output, session, values){
       sf::st_as_sf()
 
     } else {
+
     click <- input$leaf_map_draw_new_feature
     clat <- click$geometry$coordinates[[2]]
     clng <- click$geometry$coordinates[[1]]
@@ -690,49 +738,768 @@ basinMod <- function(input, output, session, values){
           value = 1/2)
 
     promises::future_promise({
-      sf::sf_use_s2(FALSE)
+
+      if(is.null(dem)){
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
+      req(data_sf)
 
-      ws_poly <- get_whitebox_streams(data_sf, input$map_res, threshold = input$threshold)
-
+      ws_dem <- get_whitebox_streams(data_sf,
+                                     input$map_res,
+                                     threshold = input$threshold)
       } else {
 
-      ws_poly <- get_whitebox_ws(data_sf, values$output_streams, values$output_pointer, input$snap_dist)
+      req(values$output_streams)
+
+      ws_poly <- get_whitebox_ws(data_sf,
+                                 output_streams = values$output_streams,
+                                 output_pointer =  values$output_pointer)
 
       }
 
+      } else {
+
+     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
+
+          req(data_sf)
+
+      ws_dem <- get_whitebox_streams(data_sf,
+                                     input$map_res,
+                                     threshold = input$threshold)
+        } else {
+
+      req(values$output_streams)
+
+      ws_poly <- get_whitebox_ws(data_sf,
+                                 prj = sf::st_crs(values$streams),
+                                 output_streams = values$output_streams,
+                                 output_pointer =  values$output_pointer)
+
+      }
+      }
 
     }) %...>% {
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
-
-      values$streams <- .[['output_streams']]
+      values$streams <- .[['output_streams_rast']]
       values$output_streams <- .[[2]]
       values$output_pointer <- .[[3]]
+      values$output_fa <- .[[6]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addRasterImage(x = values$streams, colors = 'black')
+      leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
 
       } else {
 
-      values$basin <- .[['ws_poly']]
+      values$basin <- .
+      samp <- sample(1:10000,size = 1, replace = T)
+      values$basin <- values$basin %>% mutate(id = samp)
       values$out <- list(values$basin)
-      names(values$out) <- paste0('Basin_',sample(1:10000,size = 1, replace = T))
+      names(values$out) <- paste0('Basin_',samp)
 
       values$basin_data_list <- append(values$basin_data_list, values$out)
 
+
       leaflet::leafletProxy('leaf_map', session) %>%
-        leaflet::addPolygons(data = values$basin)
+      leaflet::addPolygons(data = values$basin)
 
       }
 
 
     } %>%
       finally(~p$close())
+  })
 
+  # now for the dynamic threshold
+
+    observeEvent(input$threshold, ignoreInit = TRUE, {
+
+      req(values$output_fa)
+
+      promises::future_promise({
+
+
+
+        # extract streams based on threshold
+        output_streams <- tempfile(fileext = '.tif')
+
+        whitebox::wbt_extract_streams(values$output_fa,
+                                      output_streams,
+                                      threshold = input$threshold)
+        streams_rast <- list(streams = terra::rast(output_streams),
+                             output_streams = output_streams)
+
+      }) %...>% {
+
+          values$streams <- .[[1]]
+          values$output_streams <- .[[2]]
+
+          leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+            leaflet::clearGroup(group = paste0('raster', vals$count))
+
+          vals$count <- sample(0:10000, size = 1)
+
+          leaf_prox %>%
+            leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
+
+
+
+        }
+
+    })
+
+
+
+
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
+
+}
+
+
+#' Shiny Module UI for stream network generation
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+streamnetworkModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for stream networks
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @param dem A raster or terra object dem.
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+streamnetworkMod <- function(input, output, session, values, dem){
+
+  ns <- session$ns
+
+  values$basin_data_list <- list()
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+
+  # create a counter
+
+  vals <- shiny::reactiveValues(count = 0)
+
+  #starting leaflet map
+  output$leaf_map <- leaflet::renderLeaflet({
+
+    base_map() %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+        ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
+        width = '100%')),
+        className = "fieldset { border: 0;}") %>%
+      leaflet::addControl(html = tags$div(tags$style(css),shiny::actionButton(
+        ns('submit'), 'Run',
+        width = '100%'))) %>%
+      leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                     rectangleOptions = T,
+                                     markerOptions = F,
+                                     polygonOptions = T, targetGroup = 'draw') %>%
+      leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                          position = 'bottomright',
+                          className = 'fieldset {border:0;}') %>%
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
+                                overlayGroups = c("Hydrography"))
+  })
+
+  observe({
+    if(!is.null(dem) & vals$count == 0) {
+      p <- shiny::Progress$new()
+      p$set(message = "Uploading your DEM...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+
+      promises::future_promise({
+
+        ws_poly <- get_whitebox_streams(ele = dem,
+                                        threshold = 1000,
+                                        prj = sf::st_crs(dem))
+
+      }) %...>% {
+
+        values$streams <- .[[5]]
+        values$output_ws <- .[[4]]
+
+        bb <- sf::st_bbox(dem)
+
+        values$out <- list(watersheds = values$output_ws, streams = values$streams)
+
+        values$basin_data_list <- append(values$basin_data_list, list(values$out))
+
+
+
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+
+        vals$count <- sample(1:10000, size = 1)
+
+        leaf_prox %>%
+          leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count)) %>%
+          leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+
+
+
+      } %>%
+        finally(~p$close())
+    }
+  })
+
+  # create a counter
+
+  vals <- shiny::reactiveValues(count = 0)
+
+  observeEvent(input$submit, {
+
+    if(!is.null(input$leaf_map_draw_new_feature)){
+
+    # make sure counter is at zero
+
+      feat <- input$leaf_map_draw_new_feature
+      coords <- unlist(feat$geometry$coordinates)
+      coords <- matrix(coords, ncol = 2, byrow = T)
+
+      values$data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
+        sf::st_as_sf()
+    }
+    p <- shiny::Progress$new()
+    p$set(message = "Downloading data...",
+          detail = "This may take a little bit...",
+          value = 1/2)
+
+    promises::future_promise({
+
+      if(!is.null(input$leaf_map_draw_new_feature)){
+        ws_poly <- get_whitebox_streams(values$data_sf,
+                                        input$map_res,
+                                        threshold = input$threshold)
+      } else {
+
+
+        ws_poly <- get_whitebox_streams(ele = dem,
+                                        threshold = input$threshold,
+                                        prj = sf::st_crs(dem))
+      }
+
+    }) %...>% {
+
+        values$streams <- .[[5]]
+        values$output_ws <- .[[4]]
+
+        values$out <- list(watersheds = values$output_ws, streams = values$streams)
+
+        values$basin_data_list <- append(values$basin_data_list, list(values$out))
+
+
+        if(vals$count > 0){
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+          leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+        } else {
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+        }
+
+        vals$count <- sample(1:10000, size = 1)
+
+        leaf_prox %>%
+          leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+
+
+    } %>%
+      finally(~p$close())
 
   })
+
+  # # now for the dynamic threshold
+  #
+  # observeEvent(input$threshold, ignoreInit = TRUE, {
+  #
+  #   req(values$output_fa)
+  #
+  #   promises::future_promise({
+  #
+  #
+  #
+  #     # extract streams based on threshold
+  #     output_streams <- tempfile(fileext = '.tif')
+  #
+  #     whitebox::wbt_extract_streams(values$output_fa,
+  #                                   output_streams,
+  #                                   threshold = input$threshold)
+  #
+  #     get_whitebox_streams(values$data_sf,
+  #                          input$map_res,
+  #                          threshold = input$threshold)
+  #
+  #     streams_rast <- list(streams = terra::rast(output_streams),
+  #                          output_streams = output_streams)
+  #
+  #   }) %...>% {
+  #
+  #     values$streams <- .[[5]]
+  #     values$output_ws <- .[[4]]
+  #
+  #     values$out <- list(watersheds = values$output_ws, streams = values$streams)
+  #
+  #     values$basin_data_list <- append(values$basin_data_list, list(values$out))
+  #
+  #
+  #     if(vals$count > 0){
+  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+  #         leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+  #     } else {
+  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+  #     }
+  #
+  #     vals$count <- sample(1:10000, size = 1)
+  #
+  #     leaf_prox %>%
+  #       leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+  #                            color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
+  #       leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+  #
+  #
+  #
+  #   }
+  #
+  # })
+
+
+  # keep track of newly drawn shapes
+  drawnshapes <- list()
+
+  # we are fortunate here since we get an event
+  #   draw_all_features
+  observeEvent(
+    input$leaf_map_draw_all_features,
+    {
+      drawnshapes <<- lapply(
+        input$leaf_map_draw_all_features$features,
+        function(ftr) {
+          ftr$properties$`_leaflet_id`
+        }
+      )
+    }
+  )
+
+
+  # observe our simple little button to remove
+  observeEvent(
+    input$deletebtn,
+    {
+      lapply(
+        drawnshapes,
+        function(todelete) {
+          session$sendCustomMessage(
+            "removeleaflet",
+            list(elid=paste0(session$ns("leaf_map")), layerid=todelete)
+          )
+        }
+      )
+    }
+  )
+
+
 }
+
+
+#' Shiny Module UI for United States Geologic Survey (USGS) instantaneous values
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+usgsinstModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for United States Geologic Survey (USGS) instantaneous values
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+usgsinstMod <- function(input, output, session, values){
+
+  ns <- session$ns
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  p <- shiny::Progress$new()
+  p$set(message = "Setting up dashboard...",
+        detail = "This may take a few seconds...",
+        value = 1/2)
+
+  promises::future_promise({
+  cc <- current_conditions()
+
+  }) %...>% {
+
+  values$cc <- .
+
+  values$cc_sf <- sf::st_as_sf( values$cc, coords = c('Longitude', 'Latitude')) %>%
+    dplyr::mutate(time = as.POSIXct(values$cc$TimeLocal,format="%Y-%m-%dT%H:%M:%OS"))
+
+  values$fillColor <- leaflet::colorFactor(palette = levels(unique(values$cc_sf$StatisticsStatusColorFill)),
+                           domain = values$cc_sf$StatisticsStatusDescription
+  )
+  values$strokeColor <- leaflet::colorFactor(palette = levels(unique(values$cc_sf$StatisticsStatusColorStroke)),
+                             domain = values$cc_sf$StatisticsStatusDescription
+  )
+
+
+
+  labs <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
+<div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$cc_sf$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$cc_sf$SiteNumber,
+                 '</div>
+            <div style="border:1px solid #ddd; margin:3px 0; padding:3px 5px;">
+                Discharge, cubic feet per second
+                <div style="font-size:110%;">',values$cc_sf$Value,' ft3/s @ ',format(as.POSIXct(values$cc_sf$time), format = "%H:%M:%S"),' ', values$cc_sf$TimeZoneCode,'</div>
+                <div style="font-weight:bold;"></div>
+            </div>
+            <div style="font-size:90%;">',ifelse(!is.na(values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription,' :', values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription)),'</div>
+            <div style="font-size:90%;">Rate of Change: ', values$cc_sf$RateOfChangeUnitPerHour,' ft3/s per hour</div>
+        </div></div></div>')
+
+  leaf_map <-
+  base_map() %>%
+    leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+      ns('period'), 'Days From Now',value = 30,min = 1, max = 15000,
+      width = '100%'))) %>%
+    leaflet::addProviderTiles(provider = 'Esri.WorldStreetMap') %>%
+    leaflet::addCircleMarkers(data = values$cc_sf,
+                              fillColor = ~values$fillColor(StatisticsStatusDescription),
+                              color = ~values$strokeColor(StatisticsStatusDescription),
+                              radius = 5,
+                              weight = 2,
+                              fillOpacity = 1,
+                              opacity = 1,
+                              label = lapply(labs, HTML),
+                              layerId = ~values$cc_sf$SiteNumber
+    ) %>%
+    leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+    leaflet::hideGroup(group = 'Hydrography') %>%
+    leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","Esri.WorldImagery", "CartoDB.Positron",
+                                             "OpenStreetMap", "CartoDB.DarkMatter", 'OpenTopoMap'),
+                              overlayGroups = c("Hydrography"))
+
+
+
+  output$leaf_map <- leaflet::renderLeaflet({
+    add_select_script(
+      leaf_map,
+      styleFalse = list(fillOpacity = 1, weight = 3, opacity = 1),
+      styleTrue = list(fillOpacity = .25, weight = 1, opacity = .5),
+      ns = session$ns(NULL)
+    )
+  })
+
+  } %>%
+    finally(~p$close())
+
+
+id = "mapedit"
+select_evt = paste0(id, "_selected")
+
+values$df <- data.frame()
+values$period <- vector()
+
+# a container for our selections
+observeEvent(input[[select_evt]],{
+  # when used in modules, we get an event with blank id
+  #  on initialize so also make sure we have an id
+  id = as.character(input[[select_evt]]$id)
+  if(nrow(values$df) == 0 && !is.null(id)) {
+    values$df <- data.frame(
+      id = id,
+      selected = input[[select_evt]]$selected,
+      stringsAsFactors = FALSE
+    )
+  } else {
+    # see if already exists
+    loc <- which(values$df$id == id)
+
+    if(length(loc) > 0) {
+      values$df[loc, "selected"] <- input[[select_evt]]$selected
+    } else {
+      values$df[nrow(values$df) + 1, ] <- c(id, input[[select_evt]]$selected)
+    }
+  }
+
+})
+
+observeEvent(input$period,{
+
+  values$period <- input$period
+
+})
+
+}
+
+
+#' Shiny Module UI for United States Geologic Survey (USGS) daily values
+#'
+#' @description A shiny Module to.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @importFrom shiny NS tagList reactiveValues observe
+#' @importFrom dplyr filter select mutate slice_max ungroup rename
+#' @importFrom grDevices hcl.colors
+#' @importFrom sf st_area st_transform st_geometry st_as_sf
+#' @importFrom scales comma
+#' @importFrom leaflet addPolygons addPolylines addCircles
+#' @return UI function for Shiny module
+#' @export
+#'
+usgsdvModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for United States Geologic Survey (USGS) daily values
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+usgsdvMod <- function(input, output, session, values){
+
+  ns <- session$ns
+
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+  p <- shiny::Progress$new()
+  p$set(message = "Setting up dashboard...",
+        detail = "This may take a few seconds...",
+        value = 1/2)
+
+  promises::future_promise({
+
+    data('old_usgs_sites', package = 'gwavr')
+
+    sites <- sf::st_as_sf(df_site_new, coords = c('location.coordinates1',
+                                                                      'location.coordinates2'),
+                                          crs = 4326)
+
+    cc <- current_conditions()
+
+    list(cc, sites)
+
+  }) %...>% {
+
+    values$cc <- .[[1]]
+
+    values$sites <- .[[2]]
+
+    values$cc_sf <- sf::st_as_sf( values$cc, coords = c('Longitude', 'Latitude')) %>%
+      dplyr::mutate(time = as.POSIXct(values$cc$TimeLocal,format="%Y-%m-%dT%H:%M:%OS"))
+
+    labs <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
+<div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$cc_sf$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$cc_sf$SiteNumber,
+'</div>
+            <div style="border:1px solid #ddd; margin:3px 0; padding:3px 5px;">
+                Discharge, cubic feet per second
+                <div style="font-size:110%;">',values$cc_sf$Value,' ft3/s @ ',format(as.POSIXct(values$cc_sf$time), format = "%H:%M:%S"),' ', values$cc_sf$TimeZoneCode,'</div>
+                <div style="font-weight:bold;"></div>
+            </div>
+            <div style="font-size:90%;">',ifelse(!is.na(values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription,' :', values$cc_sf$ValueFlagCode),
+                                                 paste0(values$cc_sf$StatisticsStatusDescription)),'</div>
+            <div style="font-size:90%;">Rate of Change: ', values$cc_sf$RateOfChangeUnitPerHour,' ft3/s per hour</div>
+        </div></div></div>')
+
+    labs_sites <- paste0('<div class="leaflet-pane leaflet-tooltip-pane">
+<div class="leaflet-tooltip leaflet-zoom-animated leaflet-tooltip-left
+leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size:14px;">','<div style="text-align:center; ">',values$sites$SiteName,'
+            <div style="font-size:90%;"> Monitoring location USGS ',values$sites$SiteNumber,
+'</div></div></div></div>')
+
+    leaf_map <-
+      base_map() %>%
+      leaflet::addCircleMarkers(data = values$cc_sf,
+                                fillColor = 'blue',
+                                radius = 5,
+                                label = lapply(labs, HTML),
+                                layerId = ~values$cc_sf$SiteNumber
+      ) %>% leaflet::addCircleMarkers(data = values$sites,
+                                fillColor = 'red',
+                                radius = 4,
+                                weight = 0.2,
+                                stroke = F,
+                                label = lapply(labs_sites, HTML),
+                                layerId = ~values$sites$SiteNumber) %>%
+      leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+      leaflet::hideGroup(group = 'Hydrography') %>%
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter", 'OpenTopoMap'),
+                                overlayGroups = c("Hydrography"))%>%
+      leaflet::addLegend("bottomright",
+                colors = c("blue",  "red"),
+                labels = c("Current", "Retired"),
+                title = "USGS Monitoring Stations",
+                opacity = 1)
+
+    output$leaf_map <- leaflet::renderLeaflet({
+      add_select_script(
+        leaf_map,
+        styleFalse = list(fillOpacity = 1, weight = 3, opacity = 1),
+        styleTrue = list(fillOpacity = .25, weight = 1, opacity = .5),
+        ns = session$ns(NULL)
+      )
+    })
+
+  } %>%
+    finally(~p$close())
+
+
+  id = "mapedit"
+  select_evt = paste0(id, "_selected")
+
+  values$df <- data.frame()
+  values$period <- vector()
+
+  # a container for our selections
+  observeEvent(input[[select_evt]],{
+    # when used in modules, we get an event with blank id
+    #  on initialize so also make sure we have an id
+    id = as.character(input[[select_evt]]$id)
+    if(nrow(values$df) == 0 && !is.null(id)) {
+      values$df <- data.frame(
+        id = id,
+        selected = input[[select_evt]]$selected,
+        stringsAsFactors = FALSE
+      )
+    } else {
+      # see if already exists
+      loc <- which(values$df$id == id)
+
+      if(length(loc) > 0) {
+        values$df[loc, "selected"] <- input[[select_evt]]$selected
+      } else {
+        values$df[nrow(values$df) + 1, ] <- c(id, input[[select_evt]]$selected)
+      }
+    }
+
+  })
+
+
+}
+

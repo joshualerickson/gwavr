@@ -33,7 +33,7 @@
 #' @importFrom scales comma
 #' @importFrom leaflet addPolygons addPolylines addCircles
 #' @importFrom shiny observeEvent reactive actionButton HTML req withProgress setProgress tags
-#' @importFrom magrittr "%>%"
+#' @importFrom dplyr "%>%"
 #'
 #'
 get_nhdplus_interactively <- function(ns = 'hydro-ui',
