@@ -919,11 +919,12 @@ streamnetworkModUI <- function(id, ...){
 #' @param output Shiny server function output
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
-#' @param dem A raster or terra object dem.
+#' @param dem A raster or terra object dem. (optional)
+#' @param threshold A threshold for stream initiation. 1000 (default).
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-streamnetworkMod <- function(input, output, session, values, dem){
+streamnetworkMod <- function(input, output, session, values, dem, threshold = 1000){
 
   ns <- session$ns
 
@@ -954,7 +955,7 @@ streamnetworkMod <- function(input, output, session, values, dem){
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
-        ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
+        ns('threshold'), 'Cell Threshold',value = threshold,min = 1, max = 15000,
         width = '100%')),
         className = "fieldset { border: 0;}") %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::actionButton(
@@ -974,8 +975,8 @@ streamnetworkMod <- function(input, output, session, values, dem){
                                 overlayGroups = c("Hydrography"))
   })
 
-  observe({
-    if(!is.null(dem) & vals$count == 0) {
+observe({
+    req(!is.null(dem) & vals$count == 0)
       p <- shiny::Progress$new()
       p$set(message = "Uploading your DEM...",
             detail = "This may take a little bit...",
@@ -984,7 +985,7 @@ streamnetworkMod <- function(input, output, session, values, dem){
       promises::future_promise({
 
         ws_poly <- get_whitebox_streams(ele = dem,
-                                        threshold = 1000,
+                                        threshold = threshold,
                                         prj = sf::st_crs(dem))
 
       }) %...>% {
@@ -1006,16 +1007,23 @@ streamnetworkMod <- function(input, output, session, values, dem){
 
         leaf_prox %>%
           leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
-          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count)) %>%
-          leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+                               color = 'black', weight = 3, group = paste0('catchment', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))%>%
+          leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                   "OpenStreetMap", "CartoDB.DarkMatter"),
+                                    overlayGroups = c("Hydrography",
+                                                      paste0('catchment', vals$count),
+                                                      paste0('stream', vals$count)))
+        # %>%
+        #   leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
 
 
 
       } %>%
         finally(~p$close())
-    }
-  })
+
+
+})
 
   # create a counter
 
@@ -1034,19 +1042,26 @@ streamnetworkMod <- function(input, output, session, values, dem){
       values$data_sf <- sf::st_sf(sf::st_sfc(sf::st_polygon(list(coords))), crs = sf::st_crs(4326)) %>%
         sf::st_as_sf()
     }
-    p <- shiny::Progress$new()
-    p$set(message = "Downloading data...",
-          detail = "This may take a little bit...",
-          value = 1/2)
+
+    if(!is.null(input$leaf_map_draw_new_feature)){
+      p$set(message = "Downloading data...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+    } else {
+      p <- shiny::Progress$new()
+      p$set(message = "Updating DEM...",
+            detail = "This may take a little bit...",
+            value = 1/2)
+    }
 
     promises::future_promise({
 
       if(!is.null(input$leaf_map_draw_new_feature)){
+
         ws_poly <- get_whitebox_streams(values$data_sf,
                                         input$map_res,
                                         threshold = input$threshold)
       } else {
-
 
         ws_poly <- get_whitebox_streams(ele = dem,
                                         threshold = input$threshold,
@@ -1065,7 +1080,7 @@ streamnetworkMod <- function(input, output, session, values, dem){
 
         if(vals$count > 0){
         leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
-          leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+          leaflet::clearGroup(group = c(paste0('stream', vals$count),paste0('catchment', vals$count)))
         } else {
         leaf_prox <- leaflet::leafletProxy('leaf_map', session)
         }
@@ -1074,8 +1089,13 @@ streamnetworkMod <- function(input, output, session, values, dem){
 
         leaf_prox %>%
           leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-                               color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
-          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
+                               color = 'black', weight = 3, group = paste0('catchment', vals$count)) %>%
+          leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))%>%
+          leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                   "OpenStreetMap", "CartoDB.DarkMatter"),
+                                    overlayGroups = c("Hydrography",
+                                                      paste0('catchment', vals$count),
+                                                      paste0('stream', vals$count)))
 
 
     } %>%

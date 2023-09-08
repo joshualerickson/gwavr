@@ -9,6 +9,7 @@ get_stream_network_interactively(
   viewer = shiny::paneViewer(),
   title = "Streamnetwork",
   dem = NULL,
+  threshold = 1000,
   ...
 )
 }
@@ -26,7 +27,9 @@ behaviour in Firefox.}
 \item{title}{\code{string} to customize the title of the UI window.  The default
 is "Delineate Basin".}
 
-\item{dem}{A terra or raster DEM object if you want to add.}
+\item{dem}{A raster or terra object dem. (optional)}
+
+\item{threshold}{A threshold for stream initiation. 1000 (default).}
 
 \item{...}{other arguments to \code{leafletOutput()} in module.}
 }
