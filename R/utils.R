@@ -649,7 +649,7 @@ get_dv <- function(sites) {
 
 }
 
-
+#' @title Selecting for Leaflet
 #' @keywords internal
 #' @description Taken from the interals of the \link{mapedit} package
 add_select_script <- function(lf, styleFalse, styleTrue, ns="") {

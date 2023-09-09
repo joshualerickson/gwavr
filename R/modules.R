@@ -1044,6 +1044,7 @@ observe({
     }
 
     if(!is.null(input$leaf_map_draw_new_feature)){
+      p <- shiny::Progress$new()
       p$set(message = "Downloading data...",
             detail = "This may take a little bit...",
             value = 1/2)
