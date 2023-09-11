@@ -3,6 +3,7 @@
 #' @description This function allows the user to get stream networks and watersheds interactively with a
 #' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 #' and {whitebox} package to delineate the stream network and watersheds (see details).
+#' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -45,7 +46,9 @@
 #'
 #'
 #'
-get_stream_network_interactively <- function(ns = 'streamnetwork-ui',
+get_stream_network_interactively <- function(
+                                    map = NULL,
+                                    ns = 'streamnetwork-ui',
                                     viewer = shiny::paneViewer(),
                                     title = 'Streamnetwork',
                                     dem = NULL,
@@ -100,6 +103,7 @@ $(document).on('shiny:disconnected', function() {
     values <- reactiveValues()
 
     crud_mod <- reactive(shiny::callModule(
+      map = map,
       streamnetworkMod,
       ns,
       values = values,

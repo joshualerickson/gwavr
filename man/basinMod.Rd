@@ -4,7 +4,7 @@
 \alias{basinMod}
 \title{Shiny Module Server for basin generation}
 \usage{
-basinMod(input, output, session, values, dem)
+basinMod(input, output, session, values, dem, map)
 }
 \arguments{
 \item{input}{Shiny server function input}
@@ -16,6 +16,8 @@ basinMod(input, output, session, values, dem)
 \item{values}{A reactive Values list to pass}
 
 \item{dem}{A raster or terra object dem.}
+
+\item{map}{a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.}
 }
 \value{
 server function for Shiny module

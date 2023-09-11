@@ -3,6 +3,7 @@
 #' @description This function allows the user to delineate watershed basins interactively with a
 #' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
 #' and {whitebox} package to delineate the basin (see details).
+#' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
 #' @param viewer \code{function} for the viewer.  See Shiny \code{\link[shiny]{viewer}}.
@@ -45,11 +46,12 @@
 #' }
 #'
 #'
-get_basin_interactively <- function(ns = 'basin-ui',
-                                      viewer = shiny::paneViewer(),
-                                      title = 'Delineate Basin',
-                                      dem = NULL,
-                                      ...) {
+get_basin_interactively <- function(map = NULL,
+                                    ns = 'basin-ui',
+                                    viewer = shiny::paneViewer(),
+                                    title = 'Delineate Basin',
+                                    dem = NULL,
+                                    ...) {
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
 
@@ -96,6 +98,7 @@ $(document).on('shiny:disconnected', function() {
     values <- reactiveValues()
 
     crud_mod <- reactive(shiny::callModule(
+      map = map,
       basinMod,
       ns,
       values = values,

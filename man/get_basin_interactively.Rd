@@ -5,6 +5,7 @@
 \title{Get Watershed Basin Interactively}
 \usage{
 get_basin_interactively(
+  map = NULL,
   ns = "basin-ui",
   viewer = shiny::paneViewer(),
   title = "Delineate Basin",
@@ -13,6 +14,8 @@ get_basin_interactively(
 )
 }
 \arguments{
+\item{map}{a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.}
+
 \item{ns}{\code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 is unlikely to require a change.}
 

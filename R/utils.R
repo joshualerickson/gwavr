@@ -155,7 +155,14 @@ base_map <- function () {
                               group = grp[7], options = opt, layers = "0", attribution = att)
   opt <- leaflet::layersControlOptions(collapsed = TRUE)
   map <- leaflet::addLayersControl(map, baseGroups = grp[1:6],
-                                   overlayGroups = grp[7], options = opt)
+                                   overlayGroups = grp[7], options = opt) %>%
+    htmlwidgets::onRender("
+    function(el, x) {
+      this.on('baselayerchange', function(e) {
+        e.layer.bringToBack();
+      })
+    }
+  ")
 }
 
 
@@ -249,7 +256,9 @@ get_whitebox_streams <- function(aoi,
   ele <- elevatr::get_elev_raster(aoi,
                                   z = z,
                                   prj = prj,
-                                  clip = 'locations')}
+                                  clip = 'locations')
+
+  }
 
   # write to temp file
   output <- tempfile(fileext = '.tif')

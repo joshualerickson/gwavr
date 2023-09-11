@@ -616,10 +616,12 @@ basinModUI <- function(id, ...){
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
 #' @param dem A raster or terra object dem.
+#' @param map
+#' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-basinMod <- function(input, output, session, values, dem){
+basinMod <- function(input, output, session, values, dem, map){
 
   ns <- session$ns
 
@@ -637,6 +639,38 @@ basinMod <- function(input, output, session, values, dem){
     padding: 2.5px;}"
 
 leaf_map <-
+
+    if(!is.null(map)){
+
+      map %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+          ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+          ns('threshold'), 'Cell Threshold',value = 1000,min = 1, max = 15000,
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet.extras::addDrawToolbar(polylineOptions = F,
+                                       circleOptions = F,
+                                       circleMarkerOptions = F,
+                                       rectangleOptions = T,
+                                       markerOptions = T,
+                                       polygonOptions = T,
+                                       targetGroup = 'draw',
+                                       editOptions = leaflet.extras::editToolbarOptions(F, T)) %>%
+        leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                            position = 'bottomright',
+                            className = 'fieldset {border:0;}')%>%
+        htmlwidgets::onRender("
+    function(el, x) {
+      this.on('baselayerchange', function(e) {
+        e.layer.bringToBack();
+      })
+    }
+  ")
+    } else {
+
     base_map() %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
@@ -662,7 +696,7 @@ leaf_map <-
       leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
-
+}
   output$leaf_map <- leaflet::renderLeaflet({
    leaf_map
   })
@@ -921,10 +955,12 @@ streamnetworkModUI <- function(id, ...){
 #' @param values A reactive Values list to pass
 #' @param dem A raster or terra object dem. (optional)
 #' @param threshold A threshold for stream initiation. 1000 (default).
+#' @param map
+#' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-streamnetworkMod <- function(input, output, session, values, dem, threshold = 1000){
+streamnetworkMod <- function(input, output, session, values, dem, threshold = 1000, map){
 
   ns <- session$ns
 
@@ -949,7 +985,8 @@ streamnetworkMod <- function(input, output, session, values, dem, threshold = 10
   #starting leaflet map
   output$leaf_map <- leaflet::renderLeaflet({
 
-    base_map() %>%
+    if(is.null(map)){
+      base_map() %>%
       leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
         ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
         width = '100%')),
@@ -973,6 +1010,36 @@ streamnetworkMod <- function(input, output, session, values, dem, threshold = 10
       leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
                                                "OpenStreetMap", "CartoDB.DarkMatter"),
                                 overlayGroups = c("Hydrography"))
+    } else {
+
+      map %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+          ns('map_res'), 'Select Elevation Zoom',value = 8,min = 1, max = 14,
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::numericInput(
+          ns('threshold'), 'Cell Threshold',value = threshold,min = 1, max = 15000,
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::actionButton(
+          ns('submit'), 'Run',
+          width = '100%'))) %>%
+        leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                       rectangleOptions = T,
+                                       markerOptions = F,
+                                       polygonOptions = T, targetGroup = 'draw') %>%
+        leaflet::addControl(html = shiny::actionButton(ns("deletebtn"), "remove drawn"),
+                            position = 'bottomright',
+                            className = 'fieldset {border:0;}')%>%
+        htmlwidgets::onRender("
+    function(el, x) {
+      this.on('baselayerchange', function(e) {
+        e.layer.bringToBack();
+      })
+    }
+  ")
+    }
+
   })
 
 observe({
@@ -992,10 +1059,15 @@ observe({
 
         values$streams <- .[[5]]
         values$output_ws <- .[[4]]
+        values$output_fa <- .[[6]]
+        values$output_fd <- .[[3]]
 
         bb <- sf::st_bbox(dem)
 
-        values$out <- list(watersheds = values$output_ws, streams = values$streams)
+        values$out <- list(watersheds = values$output_ws,
+                           streams = values$streams,
+                           flow_accum = values$output_fa,
+                           flow_dir = values$output_fd)
 
         values$basin_data_list <- append(values$basin_data_list, list(values$out))
 
@@ -1013,9 +1085,8 @@ observe({
                                                    "OpenStreetMap", "CartoDB.DarkMatter"),
                                     overlayGroups = c("Hydrography",
                                                       paste0('catchment', vals$count),
-                                                      paste0('stream', vals$count)))
-        # %>%
-        #   leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+                                                      paste0('stream', vals$count))) %>%
+        leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
 
 
 
@@ -1073,8 +1144,13 @@ observe({
 
         values$streams <- .[[5]]
         values$output_ws <- .[[4]]
+        values$output_fa <- .[[6]]
+        values$output_fd <- .[[3]]
 
-        values$out <- list(watersheds = values$output_ws, streams = values$streams)
+        values$out <- list(watersheds = values$output_ws,
+                           streams = values$streams,
+                           flow_accum = values$output_fa,
+                           flow_dir = values$output_fd)
 
         values$basin_data_list <- append(values$basin_data_list, list(values$out))
 
@@ -1104,59 +1180,56 @@ observe({
 
   })
 
-  # # now for the dynamic threshold
-  #
-  # observeEvent(input$threshold, ignoreInit = TRUE, {
-  #
-  #   req(values$output_fa)
-  #
-  #   promises::future_promise({
-  #
-  #
-  #
-  #     # extract streams based on threshold
-  #     output_streams <- tempfile(fileext = '.tif')
-  #
-  #     whitebox::wbt_extract_streams(values$output_fa,
-  #                                   output_streams,
-  #                                   threshold = input$threshold)
-  #
-  #     get_whitebox_streams(values$data_sf,
-  #                          input$map_res,
-  #                          threshold = input$threshold)
-  #
-  #     streams_rast <- list(streams = terra::rast(output_streams),
-  #                          output_streams = output_streams)
-  #
-  #   }) %...>% {
-  #
-  #     values$streams <- .[[5]]
-  #     values$output_ws <- .[[4]]
-  #
-  #     values$out <- list(watersheds = values$output_ws, streams = values$streams)
-  #
-  #     values$basin_data_list <- append(values$basin_data_list, list(values$out))
-  #
-  #
-  #     if(vals$count > 0){
-  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
-  #         leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
-  #     } else {
-  #       leaf_prox <- leaflet::leafletProxy('leaf_map', session)
-  #     }
-  #
-  #     vals$count <- sample(1:10000, size = 1)
-  #
-  #     leaf_prox %>%
-  #       leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
-  #                            color = 'black', weight = 3, group = paste0('poly', vals$count)) %>%
-  #       leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('raster', vals$count))
-  #
-  #
-  #
-  #   }
-  #
-  # })
+  # now for the dynamic threshold
+#
+#   observeEvent(input$threshold, ignoreInit = TRUE, {
+#
+#     req(values$output_fa)
+#
+#     promises::future_promise({
+#
+#
+#
+#       # extract streams based on threshold
+#       output_streams <- tempfile(fileext = '.tif')
+#
+#       whitebox::wbt_extract_streams(values$output_fa,
+#                                     output_streams,
+#                                     threshold = input$threshold)
+#
+#       ws_poly <- get_whitebox_streams(values$data_sf,
+#                            input$map_res,
+#                            threshold = input$threshold)
+#
+#     }) %...>% {
+#
+#       values$streams <- .[[5]]
+#       values$output_ws <- .[[4]]
+#
+#       values$out <- list(watersheds = values$output_ws, streams = values$streams)
+#
+#       values$basin_data_list <- append(values$basin_data_list, list(values$out))
+#
+#
+#       if(vals$count > 0){
+#         leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+#           leaflet::clearGroup(group = c(paste0('raster', vals$count),paste0('poly', vals$count)))
+#       } else {
+#         leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+#       }
+#
+#       vals$count <- sample(1:10000, size = 1)
+#
+#       leaf_prox %>%
+#         leaflet::addPolygons(data = values$output_ws, fillOpacity = 0,
+#                              color = 'black', weight = 3, group = paste0('catchment', vals$count)) %>%
+#         leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))
+#
+#
+#
+#     }
+#
+#   })
 
 
   # keep track of newly drawn shapes

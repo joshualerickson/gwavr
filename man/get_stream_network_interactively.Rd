@@ -5,6 +5,7 @@
 \title{Get Stream Network Interactively}
 \usage{
 get_stream_network_interactively(
+  map = NULL,
   ns = "streamnetwork-ui",
   viewer = shiny::paneViewer(),
   title = "Streamnetwork",
@@ -14,6 +15,8 @@ get_stream_network_interactively(
 )
 }
 \arguments{
+\item{map}{a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.}
+
 \item{ns}{\code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 is unlikely to require a change.}
 
