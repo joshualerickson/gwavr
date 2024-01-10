@@ -4,7 +4,7 @@
 \alias{basinMod}
 \title{Shiny Module Server for basin generation}
 \usage{
-basinMod(input, output, session, values, dem, map)
+basinMod(input, output, session, values, dem, threshold = 1000, map, ...)
 }
 \arguments{
 \item{input}{Shiny server function input}
@@ -17,7 +17,11 @@ basinMod(input, output, session, values, dem, map)
 
 \item{dem}{A raster or terra object dem.}
 
+\item{threshold}{A threshold for stream initiation. 1000 (default).}
+
 \item{map}{a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.}
+
+\item{...}{arguments to pass to wbt_* functions.}
 }
 \value{
 server function for Shiny module

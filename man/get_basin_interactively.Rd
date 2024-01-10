@@ -10,6 +10,7 @@ get_basin_interactively(
   viewer = shiny::paneViewer(),
   title = "Delineate Basin",
   dem = NULL,
+  threshold = 1000,
   ...
 )
 }
@@ -29,9 +30,11 @@ behaviour in Firefox.}
 \item{title}{\code{string} to customize the title of the UI window.  The default
 is "Delineate Basin".}
 
-\item{dem}{A terra or raster DEM object if you want to add.}
+\item{dem}{A raster or terra object dem. (optional)}
 
-\item{...}{other arguments to \code{leafletOutput()} in module.}
+\item{threshold}{A threshold for stream initiation. 1000 (default).}
+
+\item{...}{other arguments to \code{leafletOutput()} in module and/or wbt_* functions.}
 }
 \value{
 A sf object that contains watershed polygons
@@ -44,11 +47,11 @@ and {whitebox} package to delineate the basin (see details).
 }
 \details{
 \strong{This function will throw an error if you don't draw the bounding box (rectangle) first and you didn't include your own DEM.}
-Once the user has drawn the bounding box then you can use the marker as a pour point location.
+Once the user has drawn the bounding box (or added own DEM) then you can use the marker as a pour point location.
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+\item Input a well-suited DEM zoom level and threshold. (skip if own DEM is inputted)
 \item Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 \item Use marker to place pour point(s).
 \item If necessary, change 'Cell Threshold' to change drainage density.

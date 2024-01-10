@@ -14,9 +14,9 @@
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
-#' @param ... other arguments to \code{leafletOutput()} in module.
 #' @param dem A raster or terra object dem. (optional)
 #' @param threshold A threshold for stream initiation. 1000 (default).
+#' @param ... other arguments to \code{leafletOutput()} in module and/or wbt_* functions.
 #' @note If you add your own DEM then you don't need to draw a bounding box.
 #' @details This function uses the package \link{elevatr} to download the DEM (unless you provide your own).
 #' Once the user has drawn the bounding box or inputed DEM and selected appropriate zoom (resolution) and threshold then
@@ -24,17 +24,20 @@
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+#' 1. Input a well-suited DEM zoom level and threshold. (skip if own DEM is inputted)
 #' 2. Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 #' 3. Wait for layers to respond.
-#' 4. when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
+#' 4. Repeat steps 1-4 if needed.
+#' 5. when finished, press 'done' and stream network and watersheds will be saved as a list in local environment with the associated
+#' flow accumulation and flow direction.
+#'
 #'
 #' In addition, this function uses both `whitebox::wbt_feature_preserving_smoothing()` and `whitebox::wbt_breach_depressions()`
 #' prior to running the flow direction and flow accumulation (both d8) algorithms.
 #'
 #'
 #'
-#' @return A list of sf objects that the user collected during shiny session.
+#' @return A list of sf objects that the user collected during shiny session as well as flow accumulation and direction paths to tif.
 #' Each list will contain two sf objects: `watersheds` and `streams`. The `streams` object will also return these attributes:
 #' `tribid`, `strahler`, `slope`, `length`, `mainstem`, `FID`, `STRM_VAL`.
 #' @export
@@ -108,7 +111,8 @@ $(document).on('shiny:disconnected', function() {
       ns,
       values = values,
       dem = dem,
-      threshold = threshold
+      threshold = threshold,
+      ...
     ))
 
     observe({crud_mod()})

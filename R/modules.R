@@ -154,6 +154,12 @@ nhdplusMod <- function(input, output, session, values){
 
              req(class(values$hydro_data)[[1]] == 'sf')
 
+             if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+               values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+             }
+
              leaflet::leafletProxy("leaf_map", session) %>%
                leaflet::addPolygons(data = values$hydro_data %>%
                                       sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
@@ -192,6 +198,12 @@ nhdplusMod <- function(input, output, session, values){
 
               req(class(values$hydro_data)[[1]] == 'sf')
 
+              if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+                values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+              }
+
               leaflet::leafletProxy("leaf_map", session) %>%
                 leaflet::addPolygons(data = values$hydro_data%>%
                                        sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
@@ -228,6 +240,13 @@ nhdplusMod <- function(input, output, session, values){
                                      type = 'warning')}
 
           req(class(values$hydro_data)[[1]] == 'sf')
+
+          if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+            values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+
+          }
 
           leaflet::leafletProxy("leaf_map", session) %>%
             leaflet::addPolygons(data = values$hydro_data%>%
@@ -266,6 +285,12 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
+            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+            }
+
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
                                      sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
@@ -303,6 +328,12 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
+            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+            }
+
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
                                      sf::st_transform(crs = 4326,proj4string = "+init=epsg:4326"), popup = paste0("<p style=line-height:30px;margin:0px;>",
@@ -339,6 +370,12 @@ nhdplusMod <- function(input, output, session, values){
                                        type = 'warning')}
 
             req(class(values$hydro_data)[[1]] == 'sf')
+
+            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+
+              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+            }
 
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
@@ -616,12 +653,13 @@ basinModUI <- function(id, ...){
 #' @param session Shiny server function session
 #' @param values A reactive Values list to pass
 #' @param dem A raster or terra object dem.
-#' @param map
+#' @param threshold A threshold for stream initiation. 1000 (default).
 #' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
+#' @param ... arguments to pass to wbt_* functions.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-basinMod <- function(input, output, session, values, dem, map){
+basinMod <- function(input, output, session, values, dem, threshold = 1000, map, ...){
 
   ns <- session$ns
 
@@ -668,6 +706,7 @@ leaf_map <-
         e.layer.bringToBack();
       })
     }
+})
   ")
     } else {
 
@@ -711,22 +750,28 @@ observe({
     promises::future_promise({
 
     ws_dem <- get_whitebox_streams(ele = dem,
-                                   threshold = 1000)
+                                   threshold = threshold,
+                                   ...)
 
       }) %...>% {
 
-    values$streams <- .[['output_streams_rast']]
     values$output_streams <- .[[2]]
     values$output_pointer <- .[[3]]
+    values$streams <- .[[5]]
     values$output_fa <- .[[6]]
 
     bb <- sf::st_bbox(dem)
 
-    leaflet::leafletProxy('leaf_map', session) %>%
-      leaflet::addRasterImage(x = values$streams,
-                              colors = 'blue',
-                              group = paste0('raster', vals$count))%>%
-      leaflet::fitBounds(bb[['xmin']], bb[['ymin']], bb[['xmax']], bb[['ymax']])
+    bb <- sf::st_bbox(sf::st_transform(sf::st_as_sfc(bb), 4326))
+
+    vals$count <- sample(1:10000, size = 1)
+
+    leaflet::leafletProxy('leaf_map', session)  %>%
+      leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))%>%
+      leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                               "OpenStreetMap", "CartoDB.DarkMatter"),
+                                overlayGroups = c("Hydrography",
+                                                  paste0('stream', vals$count)))
 
 
 
@@ -740,9 +785,10 @@ observe({
 
     observeEvent(input$leaf_map_draw_new_feature, {
 
+      checking <<- input$leaf_map
     if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
-    # make sure counter is at zero
+    # make sure ding the counter
 
     vals$count <- sample(0:10000, size = 1)
 
@@ -766,10 +812,20 @@ observe({
       sf::st_transform(crs = 4326)
     }
 
+    if(input$leaf_map_draw_new_feature$geometry$type != 'Point'){
+
     p <- shiny::Progress$new()
-    p$set(message = "Downloading data...",
+    p$set(message = "Running DEM through algorithms...",
           detail = "This may take a little bit...",
           value = 1/2)
+
+    } else {
+
+      p <- shiny::Progress$new()
+      p$set(message = "Generating basin...",
+            detail = "Just a sec...",
+            value = 1/2)
+    }
 
     promises::future_promise({
 
@@ -781,7 +837,8 @@ observe({
 
       ws_dem <- get_whitebox_streams(data_sf,
                                      input$map_res,
-                                     threshold = input$threshold)
+                                     threshold = input$threshold,
+                                     ...)
       } else {
 
       req(values$output_streams)
@@ -800,7 +857,8 @@ observe({
 
       ws_dem <- get_whitebox_streams(data_sf,
                                      input$map_res,
-                                     threshold = input$threshold)
+                                     threshold = input$threshold,
+                                     ...)
         } else {
 
       req(values$output_streams)
@@ -817,34 +875,72 @@ observe({
 
       if(input$leaf_map_draw_new_feature$geometry$type != 'Point') {
 
-      values$streams <- .[['output_streams_rast']]
       values$output_streams <- .[[2]]
       values$output_pointer <- .[[3]]
+      values$streams <- .[[5]]
       values$output_fa <- .[[6]]
 
       leaflet::leafletProxy('leaf_map', session) %>%
-      leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
+        leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))%>%
+        leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                 "OpenStreetMap", "CartoDB.DarkMatter"),
+                                  overlayGroups = c("Hydrography",
+                                                    paste0('stream', vals$count)))
 
       } else {
 
       values$basin <- .
-      samp <- sample(1:10000,size = 1, replace = T)
-      values$basin <- values$basin %>% mutate(id = samp)
+      samp <- input$leaf_map_draw_new_feature$properties$`_leaflet_id`
+
+      values$basin <- values$basin %>% dplyr::mutate(id = samp)
       values$out <- list(values$basin)
-      names(values$out) <- paste0('Basin_',samp)
-
       values$basin_data_list <- append(values$basin_data_list, values$out)
+      values$basin_data <- dplyr::bind_rows(values$basin_data_list)
 
+      values$bd_og <- values$basin_data
+      values$basin_data <- values$basin_data %>% dplyr::filter(id %in% as.numeric(unlist(drawnshapes)))
 
-      leaflet::leafletProxy('leaf_map', session) %>%
-      leaflet::addPolygons(data = values$basin)
+      values$deleted_data <- values$bd_og %>% dplyr::filter(!id %in% as.numeric(unlist(drawnshapes)))
+
+      if(!is.null(values$deleted_data)){
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
+                     leaflet::clearGroup(group = do.call(paste0, list('basin', values$deleted_data$id)))
+      } else {
+        leaf_prox <- leaflet::leafletProxy('leaf_map', session)
+      }
+
+      leaf_prox %>%
+      leaflet::addPolygons(data = values$basin, group = paste0('basin',values$basin$id)) %>%
+        leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                 "OpenStreetMap", "CartoDB.DarkMatter"),
+                                  overlayGroups = c("Hydrography",
+                                                    paste0('stream', vals$count),
+                                                    do.call(paste0, list('basin', values$basin_data$id))))
 
       }
 
 
     } %>%
       finally(~p$close())
+
   })
+#
+#
+  # observeEvent(input$leaf_map_draw_new_feature,{
+  #   req(!is.null(values$basin_data))
+  #   values$basin_data <- values$basin_data %>% dplyr::filter(id %in% as.numeric(unlist(drawnshapes)))
+  #   print(values$basin_data)
+  #
+  #   leaflet::leafletProxy('leaf_map', session) %>%
+  #     leaflet::addPolygons(data = values$basin_data)%>%
+  #     leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+  #                                              "OpenStreetMap", "CartoDB.DarkMatter"),
+  #                               overlayGroups = c("Hydrography",
+  #                                                 paste0('stream', vals$count)))
+  #
+  #
+  # })
+
 
   # now for the dynamic threshold
 
@@ -861,22 +957,34 @@ observe({
 
         whitebox::wbt_extract_streams(values$output_fa,
                                       output_streams,
-                                      threshold = input$threshold)
-        streams_rast <- list(streams = terra::rast(output_streams),
-                             output_streams = output_streams)
+                                      threshold = input$threshold,
+                                      ...)
+
+        # generate a stream vector
+        output_stream_vector <- tempfile(fileext = '.shp')
+
+        whitebox::wbt_raster_streams_to_vector(output_streams, values$output_pointer, output_stream_vector, verbose_mode = F)
+        stream_vector <- sf::st_as_sf(sf::read_sf(output_stream_vector)) %>%
+          sf::st_set_crs(3857) %>% sf::st_transform(4326)
+
+        streams <- list(streams = stream_vector)
 
       }) %...>% {
 
           values$streams <- .[[1]]
-          values$output_streams <- .[[2]]
 
-          leaf_prox <- leaflet::leafletProxy('leaf_map', session) %>%
-            leaflet::clearGroup(group = paste0('raster', vals$count))
+          leaf_prox <- leaflet::leafletProxy('leaf_map', session)%>%
+            leaflet::clearGroup(group = paste0('stream', vals$count))
 
           vals$count <- sample(0:10000, size = 1)
 
           leaf_prox %>%
-            leaflet::addRasterImage(x = values$streams, colors = 'blue', group = paste0('raster', vals$count))
+            leaflet::addPolylines(data = values$streams, color = 'blue', group = paste0('stream', vals$count))%>%
+            leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                     "OpenStreetMap", "CartoDB.DarkMatter"),
+                                      overlayGroups = c("Hydrography",
+                                                        paste0('stream', vals$count),
+                                                        do.call(paste0, list('basin', values$basin_data$id))))
 
 
 
@@ -888,19 +996,20 @@ observe({
 
 
   # keep track of newly drawn shapes
-  drawnshapes <- list()
+    drawnshapes <- list()
 
   # we are fortunate here since we get an event
   #   draw_all_features
   observeEvent(
     input$leaf_map_draw_all_features,
     {
-      drawnshapes <<- lapply(
+     drawnshapes <<- lapply(
         input$leaf_map_draw_all_features$features,
         function(ftr) {
           ftr$properties$`_leaflet_id`
         }
       )
+
     }
   )
 
@@ -910,7 +1019,7 @@ observe({
     input$deletebtn,
     {
       lapply(
-        drawnshapes,
+       drawnshapes,
         function(todelete) {
           session$sendCustomMessage(
             "removeleaflet",
@@ -955,12 +1064,12 @@ streamnetworkModUI <- function(id, ...){
 #' @param values A reactive Values list to pass
 #' @param dem A raster or terra object dem. (optional)
 #' @param threshold A threshold for stream initiation. 1000 (default).
-#' @param map
 #' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
+#' @param ... arguments to pass to wbt_* functions.
 #' @return server function for Shiny module
 #' @importFrom promises finally "%...>%"
 #' @export
-streamnetworkMod <- function(input, output, session, values, dem, threshold = 1000, map){
+streamnetworkMod <- function(input, output, session, values, dem, threshold = 1000, map, ...){
 
   ns <- session$ns
 
@@ -1053,7 +1162,8 @@ observe({
 
         ws_poly <- get_whitebox_streams(ele = dem,
                                         threshold = threshold,
-                                        prj = sf::st_crs(dem))
+                                        prj = sf::st_crs(dem),
+                                        ...)
 
       }) %...>% {
 
@@ -1063,6 +1173,8 @@ observe({
         values$output_fd <- .[[3]]
 
         bb <- sf::st_bbox(dem)
+
+        bb <- sf::st_bbox(sf::st_transform(sf::st_as_sfc(bb), 4326))
 
         values$out <- list(watersheds = values$output_ws,
                            streams = values$streams,
@@ -1132,12 +1244,14 @@ observe({
 
         ws_poly <- get_whitebox_streams(values$data_sf,
                                         input$map_res,
-                                        threshold = input$threshold)
+                                        threshold = input$threshold,
+                                        ...)
       } else {
 
         ws_poly <- get_whitebox_streams(ele = dem,
                                         threshold = input$threshold,
-                                        prj = sf::st_crs(dem))
+                                        prj = sf::st_crs(dem),
+                                        ...)
       }
 
     }) %...>% {

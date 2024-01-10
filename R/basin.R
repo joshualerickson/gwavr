@@ -14,8 +14,9 @@
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
-#' @param ... other arguments to \code{leafletOutput()} in module.
-#' @param dem A terra or raster DEM object if you want to add.
+#' @param dem A raster or terra object dem. (optional)
+#' @param threshold A threshold for stream initiation. 1000 (default).
+#' @param ... other arguments to \code{leafletOutput()} in module and/or wbt_* functions.
 #' @return A sf object that contains watershed polygons
 #'         the user collected during shiny session.
 #'
@@ -25,11 +26,11 @@
 #'
 #' @details
 #' **This function will throw an error if you don't draw the bounding box (rectangle) first and you didn't include your own DEM.**
-#' Once the user has drawn the bounding box then you can use the marker as a pour point location.
+#' Once the user has drawn the bounding box (or added own DEM) then you can use the marker as a pour point location.
 #'
 #' **Steps**
 #'
-#' 1. Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+#' 1. Input a well-suited DEM zoom level and threshold. (skip if own DEM is inputted)
 #' 2. Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 #' 3. Use marker to place pour point(s).
 #' 4. If necessary, change 'Cell Threshold' to change drainage density.
@@ -51,6 +52,7 @@ get_basin_interactively <- function(map = NULL,
                                     viewer = shiny::paneViewer(),
                                     title = 'Delineate Basin',
                                     dem = NULL,
+                                    threshold = 1000,
                                     ...) {
 
   ## Some code hijacked from mapedit throughout; to get miniUI look, etc
@@ -102,7 +104,8 @@ $(document).on('shiny:disconnected', function() {
       basinMod,
       ns,
       values = values,
-      dem = dem
+      dem = dem,
+      threshold = threshold
     ))
 
     observe({crud_mod()})
@@ -119,7 +122,13 @@ $(document).on('shiny:disconnected', function() {
     observeEvent(input$done, {
 
       shiny::stopApp(
-        dplyr::bind_rows(values$basin_data_list)
+        values$basin_data %>%
+        dplyr::select(geometry, id)  %>%
+        dplyr::mutate(area_acres = as.numeric(units::set_units(sf::st_area(.), 'acres')),
+                      area_miles = as.numeric(units::set_units(sf::st_area(.), 'mi^2')),
+                      area_hectares = as.numeric(units::set_units(sf::st_area(.), 'ha')),
+                      area_km = as.numeric(units::set_units(sf::st_area(.), 'km^2')))%>%
+          dplyr::relocate(-geometry,.before = geometry)
       )
 
     })

@@ -34,10 +34,10 @@ is "Delineate Basin".}
 
 \item{threshold}{A threshold for stream initiation. 1000 (default).}
 
-\item{...}{other arguments to \code{leafletOutput()} in module.}
+\item{...}{other arguments to \code{leafletOutput()} in module and/or wbt_* functions.}
 }
 \value{
-A list of sf objects that the user collected during shiny session.
+A list of sf objects that the user collected during shiny session as well as flow accumulation and direction paths to tif.
 Each list will contain two sf objects: \code{watersheds} and \code{streams}. The \code{streams} object will also return these attributes:
 \code{tribid}, \code{strahler}, \code{slope}, \code{length}, \code{mainstem}, \code{FID}, \code{STRM_VAL}.
 }
@@ -53,10 +53,12 @@ the app will create basins and streams.
 
 \strong{Steps}
 \enumerate{
-\item Input a well-suited DEM zoom level (or your own DEM) and stream threshold (resolution).
+\item Input a well-suited DEM zoom level and threshold. (skip if own DEM is inputted)
 \item Draw bounding box (rectangle or polygon) (skip if own DEM is inputted).
 \item Wait for layers to respond.
-\item when finished, press 'done' and stream network and watersheds will be saved as a list in local environment.
+\item Repeat steps 1-4 if needed.
+\item when finished, press 'done' and stream network and watersheds will be saved as a list in local environment with the associated
+flow accumulation and flow direction.
 }
 
 In addition, this function uses both \code{whitebox::wbt_feature_preserving_smoothing()} and \code{whitebox::wbt_breach_depressions()}

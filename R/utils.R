@@ -228,6 +228,36 @@ nldi_basin_function <- function(point){
 
 }
 
+#' @title Convert GEOMETRYCOLLECTION to POLYGONS
+#' @param x A sf object
+#'
+#' @return A converted sf object from GEOMETRYCOLLECTION to POLYGON or MULTIPOLYGON.
+#'
+convert_sf_geocollection <- function(x) {
+
+  data <- x %>% sf::st_drop_geometry()
+
+  sf::st_union(sf::st_as_sf(sf::st_collection_extract(x %>% sf::st_union(), c('POLYGON')))) %>%
+    sf::st_as_sf() %>%
+    dplyr::bind_cols(data) %>%
+    rename_geometry('geometry')
+
+}
+
+#' Rename Geometry Column
+#'
+#' @param g  A sf object
+#' @param name character.
+#'
+#' @return A sf object with a renamed geometry column.
+#' @notes This function was grabbed from [stack overflow](https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r) from the legend spacedman.
+rename_geometry <- function(g, name){
+  current = attr(g, "sf_column")
+  names(g)[names(g)==current] = name
+  sf::st_geometry(g)=name
+  g
+}
+
 #'
 #' @title whitebox helpers for streams
 #' @param aoi a sf polygon
@@ -235,13 +265,15 @@ nldi_basin_function <- function(point){
 #' @param threshold numeric; cell threshold for stream delineation
 #' @param prj A character vector with proj4string.
 #' @param ele A dem added by the user.
+#' @param ... Pass arguments to wbt_* functions.
 #' @noRd
 #' @return a list of file paths to .tif files and a terra::rast object
 get_whitebox_streams <- function(aoi,
                                  z,
                                  threshold,
                                  prj,
-                                 ele){
+                                 ele,
+                                 ...){
 
 
 
@@ -268,11 +300,13 @@ get_whitebox_streams <- function(aoi,
   whitebox::wbt_feature_preserving_smoothing(
     dem = output,
     output = output,
-    verbose_mode = F
+    verbose_mode = F,
+    ...
   )
 
   whitebox::wbt_breach_depressions(dem = output,
-                                   output = output, verbose_mode = F)
+                                   output = output, verbose_mode = F,
+                                   ...)
 
   # get pointer (flow direction) and accumulation
   output_pointer <- tempfile(fileext = '.tif')
@@ -286,6 +320,9 @@ get_whitebox_streams <- function(aoi,
   output_streams <- tempfile(fileext = '.tif')
 
   whitebox::wbt_extract_streams(output_fa, output_streams, threshold = threshold, verbose_mode = F)
+
+  # thin out the stream layer
+  whitebox::wbt_line_thinning(output_streams, output_streams)
 
   # get stream link identifier
   pour_pts <- tempfile(fileext = '.tif')
