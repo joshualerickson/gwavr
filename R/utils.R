@@ -117,6 +117,7 @@ get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
   final_data <- list(nldi_data$UT, nldi_catch)
 }
 
+
 #' Base Map
 #'
 #' @description A generic leaflet base map used in the shiny apps.
@@ -250,7 +251,7 @@ convert_sf_geocollection <- function(x) {
 #' @param name character.
 #'
 #' @return A sf object with a renamed geometry column.
-#' @notes This function was grabbed from [stack overflow](https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r) from the legend spacedman.
+#' @note This function was grabbed from [stack overflow](https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r) from the legend spacedman.
 rename_geometry <- function(g, name){
   current = attr(g, "sf_column")
   names(g)[names(g)==current] = name

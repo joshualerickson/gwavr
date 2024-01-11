@@ -154,9 +154,13 @@ nhdplusMod <- function(input, output, session, values){
 
              req(class(values$hydro_data)[[1]] == 'sf')
 
-             if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+             if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-               values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+               values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
 
              }
 
@@ -198,9 +202,14 @@ nhdplusMod <- function(input, output, session, values){
 
               req(class(values$hydro_data)[[1]] == 'sf')
 
-              if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+              if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-                values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+
+                values$hydro_data <- values$hydro_data %>%
+                                      dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                      split(.$rowid) %>%
+                                      purrr::map(~convert_sf_geocollection(.x)) %>%
+                                      dplyr::bind_rows()
 
               }
 
@@ -241,9 +250,13 @@ nhdplusMod <- function(input, output, session, values){
 
           req(class(values$hydro_data)[[1]] == 'sf')
 
-          if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+          if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-            values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+            values$hydro_data <- values$hydro_data %>%
+                                  dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                  split(.$rowid) %>%
+                                  purrr::map(~convert_sf_geocollection(.x)) %>%
+                                  dplyr::bind_rows()
 
 
           }
@@ -285,9 +298,13 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
 
             }
 
@@ -328,9 +345,13 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
 
             }
 
@@ -371,9 +392,13 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
 
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
 
             }
 
