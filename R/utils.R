@@ -238,7 +238,7 @@ convert_sf_geocollection <- function(x) {
 
   data <- x %>% sf::st_drop_geometry()
 
-  sf::st_union(sf::st_as_sf(sf::st_collection_extract(x %>% sf::st_union(), c('POLYGON')))) %>%
+  sf::st_union(sf::st_as_sf(sf::st_collection_extract(x %>% sf::st_zm() %>% sf::st_union(), c('POLYGON')))) %>%
     sf::st_as_sf() %>%
     dplyr::bind_cols(data) %>%
     rename_geometry('geometry')

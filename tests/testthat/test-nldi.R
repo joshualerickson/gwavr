@@ -8,5 +8,16 @@ test_that("testing get catchment characteristics from nhdplusTools", {
 
   catchment_char <- nhdplusTools::get_catchment_characteristics("CAT_BFI", ids = comid)
 
+  testthat::expect_equal(catchment_char$characteristic_value[[1]], 71)
+
+
+  catchment_char <- nhdplusTools::get_catchment_characteristics("TOT_BFI", ids = comid)
+
+  testthat::expect_equal(catchment_char$characteristic_value[[1]], 72.07)
+
+  catchment_char <- nhdplusTools::get_catchment_characteristics("ACC_BFI", ids = comid)
+
+  testthat::expect_equal(catchment_char$characteristic_value[[1]], 72.07)
+
 
 })
