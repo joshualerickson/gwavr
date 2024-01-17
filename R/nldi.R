@@ -182,14 +182,14 @@ server = function(input, output, session){
               color = "black",
               fillOpacity = 0,
               weight = 3,
-              opacity = 1)
+              opacity = 1, popup = paste0("<b>", "DA acres: ", "</b>", scales::comma(as.numeric(round(units::set_units(sf::st_area(values$nldi_data()[[2]]), acres), 1)),1), " Acres"))
 
           map_nldi <- leaflet::addPolylines(map_nldi,
                                             data = values$nldi_data()[[1]],
                                             color = "blue",
                                             weight = 3,
                                             opacity = 1)
-        }else if (input$location_map == 'local') {
+        } else if (input$location_map == 'local') {
 
           values$nldi_data <- reactive(get_NLDI_catchments(data_sf,method = 'local'))
 
@@ -199,7 +199,8 @@ server = function(input, output, session){
               color = "black",
               fillOpacity = 0,
               weight = 3,
-              opacity = 1)
+              opacity = 1, popup = paste0("<b>", "DA acres: ", "</b>", scales::comma(as.numeric(round(units::set_units(sf::st_area(values$nldi_data()[[2]]), acres), 1)),1), " Acres",
+                                          "<br>", "<b>", "Total length of Tribs: ", "</b>", round(sum(units::set_units(sf::st_length(values$nldi_data()[[1]]), mi)), 1), " Miles"))
 
           map_nldi <- leaflet::addPolylines(map_nldi,
                                             data = values$nldi_data()[[1]],
