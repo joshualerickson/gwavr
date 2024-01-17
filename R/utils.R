@@ -2,7 +2,7 @@
 #' Get NLDI
 #'
 #' @description This function grabs the upstream tributaries, upstream main stream and basin boundary using
-#' the NLDI API. It then combines the NLDI zonal stats to the basin boundary shape, i.e. 'TOT' is the 'total' basin zonal statistic.
+#' the NLDI API.
 #'
 #' @param point A sf point.
 #' @noRd
@@ -10,45 +10,19 @@
 #'
 get_NLDI <- function(point){
 
-  clat <- point$geometry[[1]][[2]]
-  clng <- point$geometry[[1]][[1]]
+  comid <- nhdplusTools::discover_nhdplus_id(point)
 
-  ids <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
-                clng,"%20", clat, "%29")
-
-  error_ids <- httr::GET(url = ids,
-                         httr::write_disk(path = file.path(tempdir(),
-                                                           "nld_tmp.json"),overwrite = TRUE))
-
-  nld <- jsonlite::fromJSON(file.path(tempdir(),"nld_tmp.json"))
-
-
-  nldiURLs <- list(site_data = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
-                                      clng,"%20", clat, "%29"),
-                   basin_boundary = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/basin"),
-                   UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/navigation/UT/flowlines?distance=999"),
-                   UM = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/navigation/UM/flowlines?distance=999"))
+  nldiURLs <- list(basin_boundary = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/basin"),
+                   UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"),
+                   UM = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UM/flowlines?distance=999"))
 
   nldi_data <- list()
 
 
   for(n in names(nldiURLs)) {
     nldi_data[n] <- list(sf::read_sf(nldiURLs[n][[1]]))
-    print(paste(n, "is of class", class(nldi_data[[n]]), "and has", nrow(nldi_data[[n]]), "features"))
   }
 
-  total_characteristic <-  data.frame(COMID = nldi_data$site_data$comid) %>% mutate(ID = dplyr::row_number()) %>%
-    group_by(ID) %>%
-    tidyr::nest() %>%
-    mutate(chars = purrr::map(data, ~nhdplusTools::get_nldi_characteristics(list(featureSource = "comid", featureID = as.character(.$COMID)),
-                                                                            type = 'total'))) %>% tidyr::unnest(c(data, chars)) %>% tidyr::unnest(c(chars)) %>% dplyr::ungroup() %>%
-    dplyr::select(COMID, characteristic_id, characteristic_value) %>%
-    tidyr::pivot_wider(names_from = "characteristic_id", values_from = "characteristic_value") %>%
-    dplyr::mutate(dplyr::across(is.character, as.numeric))
-
-
-  nldi_data[['basin_boundary']] <- nldi_data[['basin_boundary']] %>%
-    cbind(total_characteristic)
   nldi_data
 
 }
@@ -69,53 +43,33 @@ get_NLDI <- function(point){
 #'
 get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
 
-  clat <- point$geometry[[1]][[2]]
-  clng <- point$geometry[[1]][[1]]
+  comid <- tryCatch(expr = {nhdplusTools::discover_nhdplus_id(point)},
+                    error = function(e) {NA})
 
-  ids <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
-                clng,"%20", clat, "%29")
-
-  error_ids <- httr::GET(url = ids,
-                         httr::write_disk(path = file.path(tempdir(),
-                                                           "nld_tmp.json"),overwrite = TRUE))
-
-  nld <- jsonlite::fromJSON(file.path(tempdir(),"nld_tmp.json"))
+  if(is.na(comid)){stop('COMID not found')}
 
   if(method == 'all'){
-    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/navigation/UT/flowlines?distance=999"))
+    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"))
   } else if (method == 'local'){
-    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/navigation/UT/flowlines?distance=0"))
+    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=0"))
   }
 
   nldi_data <- list()
 
   for(n in names(nldiURLs)) {
     nldi_data[n] <- list(sf::read_sf(nldiURLs[n][[1]]))
-    print(paste(n, "is of class", class(nldi_data[[n]]), "and has", nrow(nldi_data[[n]]), "features"))
   }
 
   nldi_outlets <- nldi_data$UT$nhdplus_comid
 
-  nldi_catch <- nhdplusTools::get_nhdplus(comid = nldi_outlets,
-                                          realization = 'catchment')
-
-  local_characteristic <-  data.frame(COMID = nldi_outlets) %>% mutate(ID = dplyr::row_number()) %>%
-    group_by(ID) %>%
-    tidyr::nest() %>%
-    mutate(chars = purrr::map(data, ~nhdplusTools::get_nldi_characteristics(list(featureSource = "comid", featureID = as.character(.$COMID)),
-                                                                            type = type))) %>% tidyr::unnest(c(data, chars)) %>% tidyr::unnest(c(chars)) %>% dplyr::ungroup() %>%
-    dplyr::select(COMID, characteristic_id, characteristic_value) %>%
-    tidyr::pivot_wider(names_from = "characteristic_id", values_from = "characteristic_value") %>%
-    dplyr::rename(featureid = 'COMID') %>%
-    dplyr::mutate(dplyr::across(is.character, as.numeric))%>%
-    dplyr::mutate(featureid = as.integer(featureid))
-
-
-  nldi_catch <- nldi_catch %>%
-    dplyr::left_join(local_characteristic, by = c('featureid'))
+  nldi_catch <- suppressMessages(purrr::map(nldi_outlets,~nhdplusTools::get_nhdplus(comid = .,
+                                          realization = 'catchment'))) %>%
+                dplyr::bind_rows() %>%
+                sf::st_as_sf(crs = 4326)
 
   final_data <- list(nldi_data$UT, nldi_catch)
 }
+
 
 #' Base Map
 #'
@@ -237,7 +191,7 @@ convert_sf_geocollection <- function(x) {
 
   data <- x %>% sf::st_drop_geometry()
 
-  sf::st_union(sf::st_as_sf(sf::st_collection_extract(x %>% sf::st_union(), c('POLYGON')))) %>%
+  sf::st_union(sf::st_as_sf(sf::st_collection_extract(x %>% sf::st_zm() %>% sf::st_union(), c('POLYGON')))) %>%
     sf::st_as_sf() %>%
     dplyr::bind_cols(data) %>%
     rename_geometry('geometry')
@@ -250,7 +204,7 @@ convert_sf_geocollection <- function(x) {
 #' @param name character.
 #'
 #' @return A sf object with a renamed geometry column.
-#' @notes This function was grabbed from [stack overflow](https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r) from the legend spacedman.
+#' @note This function was grabbed from [stack overflow](https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r) from the legend spacedman.
 rename_geometry <- function(g, name){
   current = attr(g, "sf_column")
   names(g)[names(g)==current] = name

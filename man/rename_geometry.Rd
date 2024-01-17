@@ -17,3 +17,6 @@ A sf object with a renamed geometry column.
 \description{
 Rename Geometry Column
 }
+\note{
+This function was grabbed from \href{https://gis.stackexchange.com/questions/386584/sf-geometry-column-naming-differences-r}{stack overflow} from the legend spacedman.
+}

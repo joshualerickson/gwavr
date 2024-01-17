@@ -141,6 +141,15 @@ nhdplusMod <- function(input, output, session, values){
 
           values$hydro_data <- .
 
+             if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+               values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
+
+             }
           values$out <- list(values$hydro_data)
           names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -154,11 +163,6 @@ nhdplusMod <- function(input, output, session, values){
 
              req(class(values$hydro_data)[[1]] == 'sf')
 
-             if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-               values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-             }
 
              leaflet::leafletProxy("leaf_map", session) %>%
                leaflet::addPolygons(data = values$hydro_data %>%
@@ -185,6 +189,16 @@ nhdplusMod <- function(input, output, session, values){
 
               values$hydro_data <- .
 
+              if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+
+                values$hydro_data <- values$hydro_data %>%
+                                      dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                      split(.$rowid) %>%
+                                      purrr::map(~convert_sf_geocollection(.x)) %>%
+                                      dplyr::bind_rows()
+
+              }
               values$out <- list(values$hydro_data)
               names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -198,11 +212,6 @@ nhdplusMod <- function(input, output, session, values){
 
               req(class(values$hydro_data)[[1]] == 'sf')
 
-              if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-                values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-              }
 
               leaflet::leafletProxy("leaf_map", session) %>%
                 leaflet::addPolygons(data = values$hydro_data%>%
@@ -228,6 +237,16 @@ nhdplusMod <- function(input, output, session, values){
 
             values$hydro_data <- .
 
+          if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+            values$hydro_data <- values$hydro_data %>%
+                                  dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                  split(.$rowid) %>%
+                                  purrr::map(~convert_sf_geocollection(.x)) %>%
+                                  dplyr::bind_rows()
+
+
+          }
             values$out <- list(values$hydro_data)
             names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -241,12 +260,6 @@ nhdplusMod <- function(input, output, session, values){
 
           req(class(values$hydro_data)[[1]] == 'sf')
 
-          if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-            values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-
-          }
 
           leaflet::leafletProxy("leaf_map", session) %>%
             leaflet::addPolygons(data = values$hydro_data%>%
@@ -272,6 +285,15 @@ nhdplusMod <- function(input, output, session, values){
 
             values$hydro_data <- .
 
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
+
+            }
             values$out <- list(values$hydro_data)
             names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -285,11 +307,6 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-            }
 
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
@@ -315,6 +332,15 @@ nhdplusMod <- function(input, output, session, values){
 
             values$hydro_data <- .
 
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
+
+            }
             values$out <- list(values$hydro_data)
             names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -328,11 +354,6 @@ nhdplusMod <- function(input, output, session, values){
 
             req(class(values$hydro_data)[[1]] == 'sf')
 
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-            }
 
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
@@ -358,6 +379,16 @@ nhdplusMod <- function(input, output, session, values){
 
             values$hydro_data <- .
 
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+              values$hydro_data <- values$hydro_data %>%
+                                    dplyr::mutate(rowid = dplyr::row_number()) %>%
+                                    split(.$rowid) %>%
+                                    purrr::map(~convert_sf_geocollection(.x)) %>%
+                                    dplyr::bind_rows()
+
+            }
+
             values$out <- list(values$hydro_data)
             names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
@@ -370,12 +401,6 @@ nhdplusMod <- function(input, output, session, values){
                                        type = 'warning')}
 
             req(class(values$hydro_data)[[1]] == 'sf')
-
-            if(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION') {
-
-              values$hydro_data <- convert_sf_geocollection(values$hydro_data)
-
-            }
 
             leaflet::leafletProxy("leaf_map", session) %>%
               leaflet::addPolygons(data = values$hydro_data%>%
@@ -399,6 +424,17 @@ nhdplusMod <- function(input, output, session, values){
           }) %...>% {
 
             values$hydro_data <- .
+
+            if(any(sf::st_geometry_type(values$hydro_data) == 'GEOMETRYCOLLECTION')) {
+
+              values$hydro_data <- values$hydro_data %>%
+                dplyr::mutate(rowid = dplyr::row_number()) %>%
+                split(.$rowid) %>%
+                purrr::map(~convert_sf_geocollection(.x)) %>%
+                dplyr::bind_rows()
+
+            }
+
             values$out <- list(values$hydro_data)
             names(values$out) <- paste0(input$location_map, '_',sample(1:10000,size = 1, replace = T))
 
