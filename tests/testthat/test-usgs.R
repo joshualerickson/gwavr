@@ -1,3 +1,5 @@
+testthat::skip_on_cran()
+
 test_that("usgs functions", {
 
 
@@ -23,3 +25,5 @@ test_that("usgs functions", {
     comment.char = '#')), 2)
 
 })
+
+

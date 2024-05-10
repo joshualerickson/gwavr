@@ -14,7 +14,7 @@
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
 #'          is "Delineate Basin".
-#' @param dem A raster or terra object dem. (optional)
+#' @param dem A 'SpatRaster' object dem. (optional)
 #' @param threshold A threshold for stream initiation. 1000 (default).
 #' @param ... other arguments to \code{leafletOutput()} in module and/or wbt_* functions.
 #' @return A sf object that contains watershed polygons
@@ -124,6 +124,7 @@ $(document).on('shiny:disconnected', function() {
       shiny::stopApp(
         values$basin_data %>%
         dplyr::select(geometry, id)  %>%
+        sf::st_make_valid() %>%
         dplyr::mutate(area_acres = as.numeric(units::set_units(sf::st_area(.), 'acres')),
                       area_miles = as.numeric(units::set_units(sf::st_area(.), 'mi^2')),
                       area_hectares = as.numeric(units::set_units(sf::st_area(.), 'ha')),
