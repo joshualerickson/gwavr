@@ -1,3 +1,9 @@
+# gwavr 0.3.1  
+
+* Updated `get_nhdplus_interactively()` to account for deprecation of functions in nhdplusTools package.  
+
+* Updated `get_basin_interactively()` to allow for some deleting.  
+
 # gwavr 0.3.0  
 
 * Added new functions:  `get_streamnetwork_interactively()`, `get_usgs_iv_interactively()`, `get_usgs_dv_interactively()`.
