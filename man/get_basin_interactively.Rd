@@ -30,7 +30,7 @@ behaviour in Firefox.}
 \item{title}{\code{string} to customize the title of the UI window.  The default
 is "Delineate Basin".}
 
-\item{dem}{A raster or terra object dem. (optional)}
+\item{dem}{A 'SpatRaster' object dem. (optional)}
 
 \item{threshold}{A threshold for stream initiation. 1000 (default).}
 

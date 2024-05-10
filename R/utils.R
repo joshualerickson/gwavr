@@ -232,9 +232,11 @@ get_whitebox_streams <- function(aoi,
 
 
 
-  if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
+  if(!missing(ele) & missing(prj)) prj <- terra::crs(ele)@projargs
 
   if(missing(ele)){
+
+  if(missing(prj)){prj = "+proj=merc +a=6378137 +b=6378137 +lat_ts=0.0 +lon_0=0.0 +x_0=0.0 +y_0=0 +k=1.0 +units=m +nadgrids=@null +wktext +no_defs"}
 
   aoi <- aoi %>% sf::st_transform(prj)
 
@@ -650,8 +652,9 @@ get_dv <- function(sites) {
 }
 
 #' @title Selecting for Leaflet
+#' @author Tim Appelhans, Kenton Russell, Lorenzo Busetto.
 #' @keywords internal
-#' @description Taken from the interals of the \link{mapedit} package
+#' @description Taken from the interals of the mapedit package.
 add_select_script <- function(lf, styleFalse, styleTrue, ns="") {
   ## check for existing onRender jsHook?
 

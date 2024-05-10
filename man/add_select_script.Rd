@@ -7,6 +7,9 @@
 add_select_script(lf, styleFalse, styleTrue, ns = "")
 }
 \description{
-Taken from the interals of the \link{mapedit} package
+Taken from the interals of the mapedit package.
+}
+\author{
+Tim Appelhans, Kenton Russell, Lorenzo Busetto.
 }
 \keyword{internal}
