@@ -44,7 +44,3 @@ jobs:
           extra-packages: rcmdcheck
 
       - uses: r-lib/actions/check-r-package@v2
-
-      - name: Check
-        run: rcmdcheck::rcmdcheck(args = '--no-tests')
-        shell: Rscript {0}
