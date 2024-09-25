@@ -1,8 +1,8 @@
 #' Get Stream Network Interactively
 #'
 #' @description This function allows the user to get stream networks and watersheds interactively with a
-#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
-#' and {whitebox} package to delineate the stream network and watersheds (see details).
+#' shiny app. It uses the elevatr package to acquire the Digital Elevation Model (DEM) or user inputted DEM
+#' and whitebox package to delineate the stream network and watersheds (see details).
 #' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.
@@ -13,7 +13,7 @@
 #'          Firefox is an exception. See Details for instructions on how to enable this
 #'          behaviour in Firefox.
 #' @param title \code{string} to customize the title of the UI window.  The default
-#'          is "Delineate Basin".
+#'          is "Streamnetwork".
 #' @param dem A raster or terra object dem. (optional)
 #' @param threshold A threshold for stream initiation. 1000 (default).
 #' @param ... other arguments to \code{leafletOutput()} in module and/or wbt_* functions.

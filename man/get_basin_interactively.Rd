@@ -42,8 +42,8 @@ the user collected during shiny session.
 }
 \description{
 This function allows the user to delineate watershed basins interactively with a
-shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
-and {whitebox} package to delineate the basin (see details).
+shiny app. It uses the elevatr package to acquire the Digital Elevation Model (DEM) or user inputted DEM
+and whitebox package to delineate the basin (see details).
 }
 \details{
 \strong{This function will throw an error if you don't draw the bounding box (rectangle) first and you didn't include your own DEM.}

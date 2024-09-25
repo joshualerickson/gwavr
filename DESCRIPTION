@@ -33,11 +33,15 @@ Imports:
     elevatr,
     whitebox,
     terra,
+    rlang,
     htmlwidgets
 Suggests: 
     spelling,
     knitr,
     rmarkdown,
+    stringr,
+    readr,
+    magick,
     testthat (>= 3.0.0)
 Language: en-US
 Config/testthat/edition: 3

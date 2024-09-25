@@ -1,8 +1,8 @@
 #' Get Watershed Basin Interactively
 #'
 #' @description This function allows the user to delineate watershed basins interactively with a
-#' shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
-#' and {whitebox} package to delineate the basin (see details).
+#' shiny app. It uses the elevatr package to acquire the Digital Elevation Model (DEM) or user inputted DEM
+#' and whitebox package to delineate the basin (see details).
 #' @param map a background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
 #' @param ns \code{string} name for the Shiny \code{namespace} to use.  The \code{ns}
 #'          is unlikely to require a change.

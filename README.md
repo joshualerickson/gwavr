@@ -47,8 +47,8 @@ There are a handful of functions right now that can help with getting
 water data visually: `get_nhdplus_interactively()`,
 `get_nldi_interactively()`, `get_basin_interactively()`,
 `get_streamnetwork_interactively()`, `get_usgs_iv_interactively()`,
-`get_usgs_dv_interactively()`. Please read the manual for more
-information on how to use these functions.
+`get_usgs_dv_interactively()`, `get_noaatlas_interactively()`. Please
+read the manual for more information on how to use these functions.
 
 ## Example
 

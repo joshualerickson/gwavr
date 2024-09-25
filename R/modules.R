@@ -1762,3 +1762,157 @@ leaflet-interactive" style="opacity: 0.9;background:#343a40;color:#fff;font-size
 
 }
 
+
+#' Shiny Module UI for National Oceanic and Atmospheric Administration (NOAA) Atlas 14
+#'
+#' @description A shiny Module to get numerous precipitation-frequency statistics.
+#'
+#' @param id \code{character} id for the the Shiny namespace
+#' @param ... other arguments to \code{leafletOutput()}
+#'
+#' @return UI function for Shiny module
+#' @export
+#'
+noaatlasModUI <- function(id, ...){
+  ns <- shiny::NS(id)
+
+  leaflet::leafletOutput(ns('leaf_map'), ...)
+}
+
+
+#' Shiny Module Server for National Oceanic and Atmospheric Administration (NOAA) Atlas 14
+#' @param input Shiny server function input
+#' @param output Shiny server function output
+#' @param session Shiny server function session
+#' @param values A reactive Values list to pass
+#' @param map A background leaflet or mapview map to be used for editing. If NULL a blank mapview canvas will be provided.
+#' @return server function for Shiny module
+#' @importFrom promises finally "%...>%"
+#' @export
+noaatlasMod <- function(input, output, session, values, map){
+
+  ns <- session$ns
+
+
+  values$noaa_data_list <- list()
+  css <- "
+    label {background-color: rgba(255, 255, 255, 0.75);
+    display: inline-block;
+    max-width: 100%;
+    margin-bottom: 5px;
+    font-weight: 700;
+    color: black;
+    font-size: small;
+    font-family: inherit;
+    padding: 2.5px;}"
+
+
+  #starting leaflet map
+  output$leaf_map <- leaflet::renderLeaflet({
+
+    if(is.null(map)){
+      base_map() %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shinyWidgets::pickerInput(
+          ns('data_type'), 'Data Type',choices = list(`Precipitation depth` = 'depth',
+                                                      `Precipitation intensity` = 'intensity'),,
+          options = shinyWidgets::pickerOptions(container = 'body'),
+          width = '80%',
+          choicesOpt = list(
+            style = rep(("font-weight: bold;font-family: 'Montserrat', sans-serif;"),51)))),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shinyWidgets::pickerInput(
+          ns('units'), 'Units',choices = list(`Metric` = 'metric',
+                                              `English` = 'english'),,
+          options = shinyWidgets::pickerOptions(container = 'body'),
+          width = '80%',
+          choicesOpt = list(
+            style = rep(("font-weight: bold;font-family: 'Montserrat', sans-serif;"),51)))),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shinyWidgets::pickerInput(
+          ns('series'), 'Time Series Type',choices = list(`Annual Maximum` = 'ams',
+                                                          `Partial Duration` = 'pds'),,
+          options = shinyWidgets::pickerOptions(container = 'body'),
+          width = '80%',
+          choicesOpt = list(
+            style = rep(("font-weight: bold;font-family: 'Montserrat', sans-serif;"),51)))),
+          className = "fieldset { border: 0;}") %>%
+        leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                       rectangleOptions = F,
+                                       markerOptions = T,
+                                       polygonOptions = F, targetGroup = 'draw') %>%
+        leaflet::setView(lat = 37.0902, lng = -95.7129, zoom = 5)  %>%
+        leaflet::hideGroup(group = 'Hydrography') %>%
+        leaflet::addLayersControl(baseGroups = c("Esri.WorldStreetMap","OpenTopoMap","Esri.WorldImagery", "CartoDB.Positron",
+                                                 "OpenStreetMap", "CartoDB.DarkMatter"),
+                                  overlayGroups = c("Hydrography"))
+    } else {
+
+      map %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::selectInput(
+          ns('data_type'), 'Data Type',choices = list(`Precipitation depth` = 'depth',
+                                                      `Precipitation intensity` = 'intensity'),
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::selectInput(
+          ns('units'), 'Units',choices = list(`Metric` = 'metric',
+                                              `English` = 'english'),
+          width = '100%')),
+          className = "fieldset { border: 0;}") %>%
+        leaflet::addControl(html = tags$div(tags$style(css),shiny::selectInput(
+          ns('series'), 'Time Series Type',choices = list(`Annual Maximum` = 'ams',
+                                                          `Partial Duration` = 'pds'),
+          width = '100%'))) %>%
+        leaflet.extras::addDrawToolbar(polylineOptions = F, circleOptions = F,circleMarkerOptions = F,
+                                       rectangleOptions = F,
+                                       markerOptions = T,
+                                       polygonOptions = F, targetGroup = 'draw') %>%
+        htmlwidgets::onRender("
+    function(el, x) {
+      this.on('baselayerchange', function(e) {
+        e.layer.bringToBack();
+      })
+    }
+  ")
+    }
+
+  })
+
+  observeEvent(input$leaf_map_draw_new_feature, {
+
+    req(input$data_type, input$units, input$series)
+
+    click <- input$leaf_map_draw_new_feature
+    clat <- click$geometry$coordinates[[2]]
+    clng <- click$geometry$coordinates[[1]]
+
+    data_sf <- tidyr::tibble(Lat = clat, Lon = clng)
+
+    data_sf <- data_sf %>% sf::st_as_sf(coords = c('Lon', 'Lat')) %>%
+      sf::st_set_crs(4326) %>%
+      sf::st_transform(crs = 4326)
+
+    p <- shiny::Progress$new()
+    p$set(message = "Downloading data...",
+          detail = "This may take a sec...",
+          value = 1/2)
+
+  promises::future_promise({
+
+    pf <- get_noaatlas(data_sf,data_type = input$data_type, units = input$units, series = input$series)
+
+
+  }) %...>% {
+
+    values$pf <- .
+    values$noaa_data_list <- append(values$noaa_data_list, list(values$pf %>%
+                                dplyr::mutate(id = input$leaf_map_draw_new_feature$properties$`_leaflet_id`)))
+
+
+  } %>%
+    finally(~p$close())
+
+})
+
+
+}
+

@@ -28,7 +28,7 @@ Firefox is an exception. See Details for instructions on how to enable this
 behaviour in Firefox.}
 
 \item{title}{\code{string} to customize the title of the UI window.  The default
-is "Delineate Basin".}
+is "Streamnetwork".}
 
 \item{dem}{A raster or terra object dem. (optional)}
 
@@ -43,8 +43,8 @@ Each list will contain two sf objects: \code{watersheds} and \code{streams}. The
 }
 \description{
 This function allows the user to get stream networks and watersheds interactively with a
-shiny app. It uses the {elevatr} package to acquire the Digital Elevation Model (DEM) or user inputted DEM
-and {whitebox} package to delineate the stream network and watersheds (see details).
+shiny app. It uses the elevatr package to acquire the Digital Elevation Model (DEM) or user inputted DEM
+and whitebox package to delineate the stream network and watersheds (see details).
 }
 \details{
 This function uses the package \link{elevatr} to download the DEM (unless you provide your own).

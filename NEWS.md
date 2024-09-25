@@ -1,3 +1,7 @@
+# gwavr 0.3.2  
+
+* Added new functions:  `get_noaatlas()`, `get_noaatlas_png()`, `get_noaatlas_interactively()`.
+
 # gwavr 0.3.1  
 
 * Updated `get_nhdplus_interactively()` to account for deprecation of functions in nhdplusTools package.  
