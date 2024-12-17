@@ -12,9 +12,9 @@ get_NLDI <- function(point){
 
   comid <- nhdplusTools::discover_nhdplus_id(point)
 
-  nldiURLs <- list(basin_boundary = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/basin"),
-                   UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"),
-                   UM = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UM/flowlines?distance=999"))
+  nldiURLs <- list(basin_boundary = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/basin"),
+                   UT = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"),
+                   UM = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UM/flowlines?distance=999"))
 
   nldi_data <- list()
 
@@ -49,9 +49,9 @@ get_NLDI_catchments <- function(point, type = 'local', method = 'all'){
   if(is.na(comid)){stop('COMID not found')}
 
   if(method == 'all'){
-    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"))
+    nldiURLs <- list(UT = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"))
   } else if (method == 'local'){
-    nldiURLs <- list(UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=0"))
+    nldiURLs <- list(UT = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=0"))
   }
 
   nldi_data <- list()
@@ -162,7 +162,7 @@ nldi_basin_function <- function(point){
   clat <- point$geometry[[1]][[2]]
   clng <- point$geometry[[1]][[1]]
   rowid <- point$rowid
-  ids <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
+  ids <- paste0("https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28",
                 clng,"%20", clat, "%29")
 
   error_ids <- httr::GET(url = ids,
@@ -172,7 +172,7 @@ nldi_basin_function <- function(point){
   nld <- jsonlite::fromJSON(file.path(tempdir(),"nld_tmp.json"))
 
 
-  nldiURLs <- paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",nld$features$properties$identifier,"/basin")
+  nldiURLs <- paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",nld$features$properties$identifier,"/basin")
 
   nldi_data <- sf::read_sf(nldiURLs)
 
