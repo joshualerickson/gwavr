@@ -1,6 +1,8 @@
-# gwavr 0.3.2  
+# gwavr 0.3.2 (2024-12-17)  
 
-* Added new functions:  `get_noaatlas()`, `get_noaatlas_png()`, `get_noaatlas_interactively()`.
+* Added new functions:  `get_noaatlas()`, `get_noaatlas_png()`, `get_noaatlas_interactively()`.  
+
+* Updated URL's in non-exported NLDI functions: `get_NLDI()` and `get_NLDI_catchments()`. Thanks to @dblodgett-usgs for the pull request with changes to the URL's.  
 
 # gwavr 0.3.1  
 
