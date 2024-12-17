@@ -34,11 +34,11 @@ test_that("testing upstream main and tribs from nhdplusTools", {
 
   comid <- nhdplusTools::discover_nhdplus_id(point)
 
-  nldiURLs <- list(site_data = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/position?coords=POINT%28",
+  nldiURLs <- list(site_data = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/position?coords=POINT%28",
                                       point[1,1]$geometry[[1]][1],"%20", point[1,1]$geometry[[1]][2], "%29"),
-                   basin_boundary = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/basin"),
-                   UT = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"),
-                   UM = paste0("https://labs.waterdata.usgs.gov/api/nldi/linked-data/comid/",comid,"/navigation/UM/flowlines?distance=999"))
+                   basin_boundary = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/basin"),
+                   UT = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UT/flowlines?distance=999"),
+                   UM = paste0("https://api.water.usgs.gov/nldi/linked-data/comid/",comid,"/navigation/UM/flowlines?distance=999"))
 
   nldi_data <- list()
 
