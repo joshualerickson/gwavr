@@ -47,7 +47,7 @@ shiny app. It uses the elevatr package to acquire the Digital Elevation Model (D
 and whitebox package to delineate the stream network and watersheds (see details).
 }
 \details{
-This function uses the package \link{elevatr} to download the DEM (unless you provide your own).
+This function uses the package \code{elevatr} to download the DEM (unless you provide your own).
 Once the user has drawn the bounding box or inputed DEM and selected appropriate zoom (resolution) and threshold then
 the app will create basins and streams.
 

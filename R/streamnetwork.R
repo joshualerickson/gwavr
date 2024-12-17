@@ -18,7 +18,7 @@
 #' @param threshold A threshold for stream initiation. 1000 (default).
 #' @param ... other arguments to \code{leafletOutput()} in module and/or wbt_* functions.
 #' @note If you add your own DEM then you don't need to draw a bounding box.
-#' @details This function uses the package \link{elevatr} to download the DEM (unless you provide your own).
+#' @details This function uses the package `elevatr` to download the DEM (unless you provide your own).
 #' Once the user has drawn the bounding box or inputed DEM and selected appropriate zoom (resolution) and threshold then
 #' the app will create basins and streams.
 #'

@@ -12,7 +12,7 @@
 
 # gwavr 0.3.0  
 
-* Added new functions:  `get_streamnetwork_interactively()`, `get_usgs_iv_interactively()`, `get_usgs_dv_interactively()`.
+* Added new functions:  `get_streamnetwork_interactively()`, `get_usgs_iv_interactively()`, `get_usgs_dv_interactively()`.  
 
 * Updated `get_basin_interactively()` to take a inputted DEM as an option.  
 
