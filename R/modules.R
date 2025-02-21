@@ -1651,10 +1651,9 @@ usgsdvMod <- function(input, output, session, values){
 
   promises::future_promise({
 
-
     sites <- sf::st_as_sf(df_site_new, coords = c('location.coordinates1',
-                                                                      'location.coordinates2'),
-                                          crs = 4326)
+                                                  'location.coordinates2'),
+                                                   crs = 4326)
 
     cc <- current_conditions()
 
